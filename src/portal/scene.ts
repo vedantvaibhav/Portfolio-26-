@@ -308,8 +308,8 @@ export class PortalScene {
     // The point the grains drain to follows the hold, a little behind it.
     this.target.lerp(this.aim, 1 - Math.exp(-dt * 10));
     this.wormhole.setDrain(fx.drain, this.target.x, this.target.y);
-    // Being drawn in speeds the whole disc up.
-    this.wormhole.update(dt * this.motion, dt, hole.flow * (1 + fx.drain * drain.pullBoost), 1);
+    // It builds late, like the grains themselves.
+    this.wormhole.update(dt * this.motion, dt, hole.flow * (1 + fx.drain * fx.drain * fx.drain * drain.pullBoost), 1);
     this.final.uniforms.uClock.value = this.clock;
 
     // The site comes up on the black the grains leave behind.

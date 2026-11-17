@@ -47,7 +47,10 @@ export const portalConfig = {
     // black. A scroll does it at the centre of the hole. A press and hold inside
     // the hole does it wherever the hold is, for as long as it is held; let go
     // early and the grains come back.
-    ms: 1500,
+    ms: 3600,
+    // How late the rush comes. 1 is an even pace. Higher keeps the grains slow for
+    // longer and saves the speed for the end.
+    rush: 3.2,
     // How far the grains turn around the point on the way in. Radians.
     swirl: 2.4,
     // How much of the way to the point they travel before they are gone. 1 is all the way, 0.3 is a slight pull.
@@ -60,8 +63,9 @@ export const portalConfig = {
     reach: 1.05,
   },
   appear: {
-    // Once the frame is black, the site comes up on that same black.
-    ms: 800,
+    // Once the frame is black it stays black for a moment, then the site comes up on it.
+    pauseMs: 300,
+    ms: 1500,
     // The page starts this much larger and settles to its true size.
     scale: 1.03,
   },

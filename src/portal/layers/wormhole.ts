@@ -33,7 +33,7 @@ const VERTEX = /* glsl */ `
 attribute vec4 aLook;      // vary, dunes, glint, kind
 uniform float uClock, uSpan, uInner, uOuterX, uSwirl, uWell, uThickness, uSize;
 uniform float uPixelsPerUnit, uPixelRatio, uBrightAngle, uGain;
-uniform float uDrain, uDrainSwirl, uDrainTravel, uAspect;
+uniform float uDrain, uDrainSwirl, uDrainTravel, uDrainRush, uAspect;
 uniform vec2 uTarget;       // where the grains drain to, in screen space: -1 to 1 on each axis
 varying float vLight;
 const float TAU = 6.2831853;
@@ -70,16 +70,16 @@ void main(){
   if (uDrain > 0.) {
     vec2 screen = gl_Position.xy/gl_Position.w;
     vec2 away = (screen-uTarget)*vec2(uAspect, 1.);
-    float wait = 0.45*clamp(length(away)/1.6, 0., 1.)+0.25*vary;
-    float e = clamp(uDrain*1.7-wait, 0., 1.);
-    e = e*e*(3.-2.*e);
-    e *= e;                                              // slow to leave, then quick
+    float wait = 0.28*clamp(length(away)/1.6, 0., 1.)+0.14*vary;
+    float e = clamp(uDrain*1.42-wait, 0., 1.);
+    // A long, slow drift toward the point, and a rush at the very end.
+    e = pow(e, uDrainRush);
     float turn = e*uDrainSwirl*(0.5+vary);
     float cs = cos(turn), sn = sin(turn);
     away = vec2(away.x*cs-away.y*sn, away.x*sn+away.y*cs)*(1.-e*uDrainTravel);
     gl_Position.xy = (uTarget+away/vec2(uAspect, 1.))*gl_Position.w;
     size *= 1.-0.6*e;
-    gone = 1.-smoothstep(0.5, 1., e);
+    gone = 1.-smoothstep(0.62, 1., e);
   }
   gl_PointSize = min(size, 20.*uPixelRatio);
 
@@ -156,6 +156,7 @@ export class Wormhole {
         uDrain: { value: 0 },
         uDrainSwirl: { value: 0 },
         uDrainTravel: { value: 1 },
+        uDrainRush: { value: 3 },
         uAspect: { value: 1 },
         uTarget: { value: new Vector2() },
       },
@@ -187,6 +188,7 @@ export class Wormhole {
     u.uBrightAngle.value = (w.brightAngle * Math.PI) / 180;
     u.uDrainSwirl.value = config.drain.swirl;
     u.uDrainTravel.value = config.drain.travel;
+    u.uDrainRush.value = config.drain.rush;
     this.group.rotation.set((w.elevation * Math.PI) / 180, 0, (w.roll * Math.PI) / 180);
 
     // Phones draw about a third as many points, each a little brighter to keep the same weight.

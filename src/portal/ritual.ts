@@ -30,10 +30,11 @@ export function buildDrain(fx: Fx, config: PortalConfig, hooks: Hooks) {
   // Each grain eases on its own in the shader, so the clock itself runs evenly.
   tl.to(fx, { drain: 1, duration: drain, ease: "none" }, 0);
 
+  const pause = config.appear.pauseMs / 1000;
   tl.addLabel("gone", drain)
     .call(hooks.onGone, undefined, "gone")
-    .to(fx, { cover: 0, duration: appear, ease: "power1.inOut" }, "gone")
-    .to(fx, { settle: 1, duration: appear, ease: "power2.out" }, "gone");
+    .to(fx, { cover: 0, duration: appear, ease: "sine.inOut" }, `gone+=${pause}`)
+    .to(fx, { settle: 1, duration: appear, ease: "power2.out" }, `gone+=${pause}`);
 
   return tl;
 }
