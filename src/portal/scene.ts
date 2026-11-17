@@ -355,14 +355,17 @@ export class PortalScene {
     this.renderer.dispose();
   }
 
-  /** Place the hole by screen fraction, so portrait and landscape both compose. */
+  /** Place the hole by screen fraction from the centre, so portrait and landscape both compose. */
   private layout() {
     const hole = this.config.wormhole;
     const tan = Math.tan((this.camera.fov * Math.PI) / 360);
     const halfHeight = hole.depth * tan;
     const halfWidth = halfHeight * this.camera.aspect;
     const dpr = this.renderer.getPixelRatio();
-    this.wormhole.place(hole.x * halfWidth, hole.y * halfHeight, -hole.depth);
+    // Put the lip of the hole, the black circle itself, on that spot. With x and y
+    // at 0 the black sits dead centre. The group's own origin is a little above the lip.
+    this.axis.set(0, 1, 0).applyQuaternion(this.wormhole.group.quaternion).multiplyScalar(this.wormhole.lipDepth);
+    this.wormhole.place(hole.x * halfWidth + this.axis.x, hole.y * halfHeight + this.axis.y, -hole.depth + this.axis.z);
     this.wormhole.setScale((this.height * dpr) / (2 * tan), dpr, this.camera.aspect);
   }
 

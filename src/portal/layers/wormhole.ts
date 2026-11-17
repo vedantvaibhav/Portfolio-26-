@@ -33,7 +33,7 @@ const VERTEX = /* glsl */ `
 attribute vec4 aLook;      // vary, dunes, glint, kind
 uniform float uClock, uSpan, uInner, uOuterX, uSwirl, uWell, uThickness, uSize;
 uniform float uPixelsPerUnit, uPixelRatio, uBrightAngle, uGain;
-uniform float uDrain, uDrainSwirl, uDrainTravel, uDrainRush, uAspect;
+uniform float uDrain, uDrainCurve, uDrainFlight, uDrainTravel, uDrainRush, uAspect;
 uniform vec2 uTarget;       // where the grains drain to, in screen space: -1 to 1 on each axis
 varying float vLight;
 const float TAU = 6.2831853;
@@ -64,22 +64,28 @@ void main(){
   float soft = 2.6*uPixelRatio;
   float bokeh = size > soft ? soft/size : 1.;            // close to the lens they swell and go faint
 
-  // The drain. Every grain is drawn across the screen to one point, turning as
-  // it goes, and is gone when it gets there. The ones nearest leave first.
+  // The drain. The picture is not pulled or bent. Each grain leaves on its own,
+  // at its own moment, and flies across the screen to the point. Until its turn
+  // comes it stays exactly where it was. So the wormhole holds its shape and
+  // thins out, while a stream of grains pours into the point.
   float gone = 1.;
   if (uDrain > 0.) {
     vec2 screen = gl_Position.xy/gl_Position.w;
     vec2 away = (screen-uTarget)*vec2(uAspect, 1.);
-    float wait = 0.28*clamp(length(away)/1.6, 0., 1.)+0.14*vary;
-    float e = clamp(uDrain*1.42-wait, 0., 1.);
-    // A long, slow drift toward the point, and a rush at the very end.
-    e = pow(e, uDrainRush);
-    float turn = e*uDrainSwirl*(0.5+vary);
-    float cs = cos(turn), sn = sin(turn);
-    away = vec2(away.x*cs-away.y*sn, away.x*sn+away.y*cs)*(1.-e*uDrainTravel);
+    float far = length(away);
+    // Two rolls of the dice per grain, from where it sits in the cloud.
+    float roll = fract(sin(dot(position.xy, vec2(12.9898, 78.233)))*43758.5453);
+    float bend = fract(sin(dot(position.xy, vec2(39.3468, 11.135)))*24634.6345)-0.5;
+    // When it leaves: a trickle first, then more and more. Grains near the point go a little sooner.
+    float leave = (1.-uDrainFlight)*(0.82*pow(roll, 0.65)+0.18*clamp(far/1.6, 0., 1.));
+    float e = clamp((uDrain-leave)/uDrainFlight, 0., 1.);
+    e = pow(e, uDrainRush);                              // its own trip: slow off the mark, fast at the end
+    // Each takes its own curved path, some bowing left and some right.
+    vec2 side = vec2(-away.y, away.x)*bend*uDrainCurve*sin(e*3.14159265);
+    away = (away+side)*(1.-e*uDrainTravel);
     gl_Position.xy = (uTarget+away/vec2(uAspect, 1.))*gl_Position.w;
-    size *= 1.-0.6*e;
-    gone = 1.-smoothstep(0.62, 1., e);
+    size *= 1.-0.5*e;
+    gone = 1.-smoothstep(0.7, 1., e);
   }
   gl_PointSize = min(size, 20.*uPixelRatio);
 
@@ -154,7 +160,8 @@ export class Wormhole {
         uBrightAngle: { value: 0 },
         uGain: { value: 0 },
         uDrain: { value: 0 },
-        uDrainSwirl: { value: 0 },
+        uDrainCurve: { value: 0 },
+        uDrainFlight: { value: 0.3 },
         uDrainTravel: { value: 1 },
         uDrainRush: { value: 3 },
         uAspect: { value: 1 },
@@ -186,7 +193,8 @@ export class Wormhole {
     u.uThickness.value = w.thickness;
     u.uSize.value = w.pointSize;
     u.uBrightAngle.value = (w.brightAngle * Math.PI) / 180;
-    u.uDrainSwirl.value = config.drain.swirl;
+    u.uDrainCurve.value = config.drain.curve;
+    u.uDrainFlight.value = config.drain.flight;
     u.uDrainTravel.value = config.drain.travel;
     u.uDrainRush.value = config.drain.rush;
     this.group.rotation.set((w.elevation * Math.PI) / 180, 0, (w.roll * Math.PI) / 180);

@@ -22,8 +22,8 @@ const viewports = [
   { name: "phone", viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 ];
 // Position on the master timeline, 0 to 1. With the default timings the
-// grains are all gone near 0.67.
-const beats = [["3-drain-a", 0.2], ["4-drain-b", 0.4], ["5-drain-c", 0.54], ["6-drain-d", 0.63], ["7-appearing", 0.86], ["8-arrived", 0.98]];
+// grains are all gone near 0.7.
+const beats = [["3-drain-a", 0.14], ["4-drain-b", 0.32], ["5-drain-c", 0.48], ["6-drain-d", 0.62], ["7-appearing", 0.88], ["8-arrived", 0.98]];
 
 const browser = await chromium.launch({
   args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],

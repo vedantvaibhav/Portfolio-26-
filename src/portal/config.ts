@@ -14,9 +14,10 @@ export const portalConfig = {
     thickness: 0.009,
     innerRadius: 15,
     outerRadius: 85,
-    // Where the hole sits: share of the half width and half height from the centre, and how far away.
-    x: 0.24,
-    y: 0.16,
+    // Where the black of the hole sits: share of the half width and half height from the
+    // centre of the screen. 0 and 0 is dead centre. Then how far away it is.
+    x: 0,
+    y: 0,
     depth: 54,
     // How far above the sheet the camera looks from, and how much the horizon leans. Degrees.
     elevation: 24,
@@ -43,20 +44,23 @@ export const portalConfig = {
     delayMs: 1200,
   },
   drain: {
-    // The way in. Every grain is drawn to one point and vanishes there, leaving
-    // black. A scroll does it at the centre of the hole. A press and hold inside
-    // the hole does it wherever the hold is, for as long as it is held; let go
-    // early and the grains come back.
-    ms: 3600,
-    // How late the rush comes. 1 is an even pace. Higher keeps the grains slow for
-    // longer and saves the speed for the end.
-    rush: 3.2,
-    // How far the grains turn around the point on the way in. Radians.
-    swirl: 2.4,
-    // How much of the way to the point they travel before they are gone. 1 is all the way, 0.3 is a slight pull.
+    // The way in. The grains leave the wormhole one by one and fly to a point,
+    // where they vanish, leaving black. The wormhole itself does not move or
+    // bend: it holds its shape and thins out. A scroll does it at the centre of
+    // the hole. A press and hold inside the hole does it wherever the hold is,
+    // for as long as it is held; let go early and the grains come back.
+    ms: 4200,
+    // How much of that time one grain's own trip takes. The rest is the spread
+    // of when they leave. Smaller means a longer, thinner stream.
+    flight: 0.3,
+    // A grain's own trip: 1 is an even pace, higher starts slow and ends fast.
+    rush: 2.4,
+    // How much each grain's path bows on the way. 0 is a straight line.
+    curve: 0.45,
+    // How much of the way to the point they travel before they are gone. 1 is all the way.
     travel: 1,
-    // The flow of the wormhole runs this many times faster while it drains.
-    pullBoost: 10,
+    // The flow of the wormhole runs this many times faster by the end.
+    pullBoost: 6,
     // Letting go early plays it backwards this many times faster.
     returnSpeed: 1.6,
     // A hold counts if it lands within this many hole radii of the centre.
