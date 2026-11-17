@@ -1,4 +1,4 @@
-import { HalfFloatType, PerspectiveCamera, Scene, Vector2, Vector3, WebGLRenderer } from "three";
+import { HalfFloatType, PerspectiveCamera, Scene, Vector2, WebGLRenderer } from "three";
 import {
   BloomEffect,
   ChromaticAberrationEffect,
@@ -11,11 +11,10 @@ import {
 } from "postprocessing";
 import type { PortalConfig } from "./config";
 import { LensEffect, LightEffect, createFinalMaterial } from "./effects";
-import { Dust } from "./layers/dust";
 import { Nebula } from "./layers/nebula";
-import { Planet } from "./layers/planet";
 import { Stars } from "./layers/stars";
 import { Trail } from "./layers/trail";
+import { Wormhole } from "./layers/wormhole";
 import { judgeStroke, ringRadius } from "./recognize";
 import { gsap } from "@/lib/gsap";
 import { buildOpening, buildReducedOpening, restFx, type Fx } from "./ritual";
@@ -39,8 +38,6 @@ export type FrameStats = {
 export type Phase = "idle" | "drawing" | "fail" | "snap" | "ignition" | "opening" | "done";
 export type Miss = "open" | "shape";
 
-/** How far away the planets sit. Stars are behind them, dust in front. */
-const PLANET_DEPTH = 60;
 /** Radius of the guide ring and of the keyboard circle, as a share of the short side. */
 const DEFAULT_RADIUS = 0.17;
 
@@ -67,12 +64,9 @@ export class PortalScene {
   private scene = new Scene();
   private camera: PerspectiveCamera;
 
-  private light = new Vector3(-0.72, 0.38, 0.42).normalize();
   private nebula = new Nebula();
   private stars = new Stars();
-  private planet = new Planet(this.light, 2);
-  private moon = new Planet(this.light, 5);
-  private dust = new Dust();
+  private wormhole = new Wormhole();
   private trail = new Trail();
 
   private lens = new LensEffect();
@@ -127,10 +121,8 @@ export class PortalScene {
     this.camera = new PerspectiveCamera(config.camera.fov, 1, 0.5, 600);
     this.scene.add(
       this.nebula.backdrop,
-      this.planet.group,
-      this.moon.group,
       this.stars.points,
-      this.dust.points,
+      this.wormhole.group,
       this.trail.ribbon,
       this.trail.head,
     );
@@ -164,9 +156,7 @@ export class PortalScene {
 
     this.nebula.apply(config);
     this.stars.apply(config);
-    this.planet.apply(config.planet);
-    this.moon.apply({ ...config.moon, tint: config.moon.a, tintAmount: 0 });
-    this.dust.setStrength(config.dust.strength);
+    this.wormhole.apply(config, window.matchMedia("(pointer: coarse)").matches);
     this.trail.apply(config);
 
     this.bloom.intensity = config.film.bloom;
@@ -326,7 +316,7 @@ export class PortalScene {
     this.camera.position.set(
       this.lean.x * c.leanShift + Math.sin(t * 0.11) * c.drift,
       this.lean.y * c.leanShift + Math.sin(t * 0.083 + 1.3) * c.drift,
-      Math.sin(t * 0.19) * c.breathe - fx.push * ignition.cameraPush * PLANET_DEPTH,
+      Math.sin(t * 0.19) * c.breathe - fx.push * ignition.cameraPush * this.config.wormhole.depth,
     );
 
     // The haze is at infinity: it follows the turn of the camera, not its slide.
@@ -334,9 +324,9 @@ export class PortalScene {
     this.nebula.render(this.renderer, t, Math.tan(yaw) / perHeight, Math.tan(pitch) / perHeight);
 
     this.stars.update(t, fx.stars);
-    this.planet.update(t, this.config.planet.turnsPerMinute);
-    this.moon.update(t, this.config.planet.turnsPerMinute * 1.6);
-    this.dust.update(dt * this.motion);
+    // The pull of the ring speeds the whole disc up.
+    const hole = this.config.wormhole;
+    this.wormhole.update(dt * this.motion, hole.flow * (1 + (fx.pull + fx.warp * 2) * hole.pullBoost), fx.stars);
 
     this.trail.morph = fx.morph;
     this.trail.update(dt, fx.trail, this.phase === "drawing");
@@ -420,25 +410,22 @@ export class PortalScene {
     this.failTween?.kill();
     this.nebula.dispose();
     this.stars.dispose();
-    this.planet.dispose();
-    this.moon.dispose();
-    this.dust.dispose();
+    this.wormhole.dispose();
     this.trail.dispose();
     this.final.dispose();
     this.composer.dispose();
     this.renderer.dispose();
   }
 
-  /** Place the planets by screen fraction, so portrait and landscape both compose. */
+  /** Place the hole by screen fraction, so portrait and landscape both compose. */
   private layout() {
+    const hole = this.config.wormhole;
     const tan = Math.tan((this.camera.fov * Math.PI) / 360);
-    const halfHeight = PLANET_DEPTH * tan;
+    const halfHeight = hole.depth * tan;
     const halfWidth = halfHeight * this.camera.aspect;
-    const unit = Math.min(halfHeight, halfWidth * 1.5);
-
-    this.planet.place(0.63 * halfWidth, 0.46 * halfHeight, -PLANET_DEPTH, 0.12 * unit);
-    this.moon.place(-0.675 * halfWidth, -0.34 * halfHeight, -PLANET_DEPTH * 1.4, 0.028 * unit * 1.4);
-    this.dust.resize(tan * this.camera.aspect, tan, this.canvas.clientHeight || 1, this.renderer.getPixelRatio());
+    const dpr = this.renderer.getPixelRatio();
+    const pixelsPerUnit = ((this.canvas.clientHeight || 1) * dpr) / (2 * tan);
+    this.wormhole.place(hole.x * halfWidth, hole.y * halfHeight, -hole.depth, pixelsPerUnit, dpr);
   }
 
   private tick = (now: number) => {

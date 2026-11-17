@@ -122,11 +122,10 @@ export class Stars {
       intensity[i] = layer.gain * (0.22 + 1.9 * bright);
       phase[i] = random();
 
-      // Mostly cool white, some warm.
-      const warm = Math.min(1, Math.max(0, (random() - 0.55) / 0.45));
-      tint[i * 3] = 0.72 + 0.28 * warm;
-      tint[i * 3 + 1] = 0.82 + 0.08 * warm;
-      tint[i * 3 + 2] = 1.0 - 0.22 * warm;
+      // Black and white: every star is the same neutral white.
+      tint[i * 3] = 1;
+      tint[i * 3 + 1] = 1;
+      tint[i * 3 + 2] = 1;
     }
 
     const geometry = new BufferGeometry();

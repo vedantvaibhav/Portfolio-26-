@@ -8,35 +8,41 @@
  */
 export const portalConfig = {
   space: {
-    // Darker than the handoff palette, per Vedant's storyboard review.
-    deep: "#020204",
-    lift: "#04060c",
-    nebulaIndigo: "#33416b",
-    nebulaMarigold: "#e9a321",
-    nebulaCoral: "#f1a98c",
-    nebulaStrength: 0.32,
+    // Black and white. Colour only arrives with the ring.
+    deep: "#010101",
+    lift: "#050505",
+    nebulaIndigo: "#3a3a3a",
+    nebulaMarigold: "#2a2a2a",
+    nebulaCoral: "#2a2a2a",
+    nebulaStrength: 0.08,
   },
   stars: {
-    // Stars in a 16:9 view. 20% fewer than the storyboard, per Vedant.
-    count: 3000,
+    // Stars in a 16:9 view.
+    count: 2600,
     twinkle: 0.35,
   },
-  planet: {
-    // Dusk: clay and coral, with a slate blue cast in the bands and the rim.
-    a: "#26181a",
-    b: "#583c34",
-    tint: "#2b3552",
-    tintAmount: 0.5,
-    rim: "#a98a9c",
-    turnsPerMinute: 0.05,
-  },
-  moon: {
-    a: "#262625",
-    b: "#54524d",
-    rim: "#8c8a85",
-  },
-  dust: {
-    strength: 1,
+  wormhole: {
+    // Phones draw half as many.
+    grains: 260000,
+    grainSize: 0.095,
+    innerRadius: 15,
+    outerRadius: 130,
+    // Where the hole sits: share of the half width and half height from the centre, and how far away.
+    x: 0.26,
+    y: 0.14,
+    depth: 56,
+    // How far above the disc the camera looks from, and how much the horizon leans. Degrees.
+    elevation: 20,
+    roll: -11,
+    // How many radians a grain winds on its way in, and how deep the sheet dips into the hole.
+    swirl: 6,
+    well: 0.28,
+    // Share of the journey from rim to hole covered per second. 0.006 takes about three minutes.
+    flow: 0.006,
+    // During ignition and the opening the flow runs this many times faster.
+    pullBoost: 10,
+    gain: 2.6,
+    brightAngle: 120,
   },
   camera: {
     fov: 40,
@@ -83,7 +89,7 @@ export const portalConfig = {
     grow: 1.15,
   },
   ignition: {
-    ms: 660,
+    ms: 1200,
     chromaticSplit: 0.016,
     cameraPush: 0.03,
     lens: 0.75,
@@ -93,7 +99,7 @@ export const portalConfig = {
     intensity: 1.12,
   },
   opening: {
-    ms: 1200,
+    ms: 2100,
     maxChromatic: 0.016,
     swellMs: 150,
     swellStrength: 0.55,
@@ -113,7 +119,8 @@ export const portalConfig = {
     vignette: 0.5,
     bloom: 0.22,
     bloomThreshold: 0.75,
-    edgeFringe: 0.00025,
+    // No colour fringing at rest: the space is black and white until the ring.
+    edgeFringe: 0,
   },
   quality: {
     stepDownMs: 22,

@@ -39,8 +39,8 @@ uniform float uAlpha, uStall;
 ${NOISE}
 void main(){
   float x = abs(vSide)*${HALO.toFixed(1)};               // distance from the centre line, in core widths
-  vec3 col = vec3(1.0, 0.98, 0.95)*exp(-x*x)*(0.9+0.9*vSpeed);   // faster is brighter
-  col += vec3(0.50, 0.66, 1.0)*(0.62*exp(-x/3.5)+0.24*exp(-x/9.))*smoothstep(1., 0.35, abs(vSide));
+  vec3 col = vec3(1.0)*exp(-x*x)*(0.9+0.9*vSpeed);   // faster is brighter
+  col += vec3(0.72)*(0.62*exp(-x/3.5)+0.24*exp(-x/9.))*smoothstep(1., 0.35, abs(vSide));
   col *= (0.55+0.45*smoothstep(0., 0.4, vAlong))*smoothstep(0., 0.03, vAlong);   // the start of the stroke sits back, and tapers in
   col *= smoothstep(uStall, uStall+0.35, vAlong);           // the tail fades when the hand stops
   gl_FragColor = vec4(toLinear(col)*uAlpha, 1.);
@@ -62,7 +62,7 @@ uniform float uAlpha;
 ${NOISE}
 void main(){
   float d = length(gl_PointCoord*2.-1.);
-  vec3 col = vec3(1.0, 0.97, 0.94)*exp(-d*d*90.)*1.6 + vec3(0.5, 0.66, 1.0)*0.4*exp(-d*5.)*smoothstep(1., 0.6, d);
+  vec3 col = vec3(1.0, 0.97, 0.94)*exp(-d*d*90.)*1.6 + vec3(0.7)*0.4*exp(-d*5.)*smoothstep(1., 0.6, d);
   gl_FragColor = vec4(toLinear(col)*uAlpha, 1.);
 }
 `;

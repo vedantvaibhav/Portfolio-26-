@@ -110,7 +110,7 @@ vec3 lDust(vec2 q){
     float dist = length(d+heading*tail*t);
     float size = (0.0006+0.0013*h2*h2)*(1.-0.6*t);
     float life = smoothstep(0., 0.12, u)*smoothstep(1., 0.9, u);
-    acc += mix(vec3(0.74, 0.82, 1.0), vec3(1.0, 0.86, 0.72), h)*exp(-dist*dist/(size*size))*(0.45+2.2*h3)*(1.-t)*life;
+    acc += vec3(0.9)*exp(-dist*dist/(size*size))*(0.45+2.2*h3)*(1.-t)*life;
   }
   return acc*pull;
 }
@@ -143,15 +143,15 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   }
   if (thin > 0.) {
     float d = abs(r-radius);
-    light += (vec3(1.0, 0.99, 0.97)*exp(-d*d/(0.0016*0.0016))*1.5 + vec3(0.5, 0.66, 1.0)*(0.5*exp(-d/0.008)+0.12*exp(-d/0.03)))*thin;
+    light += (vec3(1.0)*exp(-d*d/(0.0016*0.0016))*1.5 + vec3(0.72)*(0.5*exp(-d/0.008)+0.12*exp(-d/0.03)))*thin;
   }
   if (guide > 0.) {
     float d = abs(length(p)-guideRadius);
     float dash = smoothstep(0.25, 0.15, abs(fract(atan(p.y, p.x)/L_TAU*72.+clock*0.01)-0.5));
-    light += vec3(0.8, 0.85, 1.0)*exp(-d*d/(0.0011*0.0011))*dash*guide;
+    light += vec3(0.85)*exp(-d*d/(0.0011*0.0011))*dash*guide;
   }
   if (pull > 0.) light += lDust(q);
-  if (warp > 0.) light += vec3(0.82, 0.88, 1.0)*(lStreaks(q, 320., 31., 0.05, 1.2, 0.75, 0.5) + lStreaks(q, 520., 47., 0.1, 1.3, 0.55, 0.45)*0.8 + lStreaks(q, 190., 57., 0.02, 0.9, 1.1, 0.5)*1.2);
+  if (warp > 0.) light += vec3(0.9)*(lStreaks(q, 320., 31., 0.05, 1.2, 0.75, 0.5) + lStreaks(q, 520., 47., 0.1, 1.3, 0.55, 0.45)*0.8 + lStreaks(q, 190., 57., 0.02, 0.9, 1.1, 0.5)*1.2);
   if (swell > 0.) light += vec3(1.0, 0.93, 0.86)*swell*(0.10+0.34*smoothstep(0.25, 1.0, length(p*vec2(0.95, 1.3))));
 
   outputColor = vec4(col + lLinear(light), inputColor.a);

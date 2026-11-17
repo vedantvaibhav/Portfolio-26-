@@ -20,8 +20,9 @@ const viewports = [
   { name: "desktop", viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, circle: [640, 430, 190] },
   { name: "phone", viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, circle: [195, 400, 110] },
 ];
-// Position on the master timeline, 0 to 1. Snap ends near 0.11, ignition near 0.43.
-const beats = [["3-snap", 0.07], ["4-ignition", 0.41], ["5-opening-early", 0.76], ["6-opening-mid", 0.87], ["7-opening-late", 0.95]];
+// Position on the master timeline, 0 to 1. With the default timings the snap
+// ends near 0.07 and the ignition near 0.41.
+const beats = [["3-snap", 0.045], ["4-ignition", 0.38], ["5-opening-early", 0.74], ["6-opening-mid", 0.87], ["7-opening-late", 0.95]];
 
 const browser = await chromium.launch({
   args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
