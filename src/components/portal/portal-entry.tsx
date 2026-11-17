@@ -184,7 +184,7 @@ export function PortalEntry() {
           )}
           <canvas
             ref={canvasRef}
-            aria-label="Open space, dark and still. A small planet far away. Draw a circle to open the site, or press Enter."
+            aria-label="Open space in black and white. White grains turn slowly around a dark hole and fall into it. Draw a circle to open the site, or press Enter."
             className="portal-canvas absolute inset-0 size-full touch-none"
             data-ready={ready || undefined}
           />
