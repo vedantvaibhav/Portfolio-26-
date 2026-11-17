@@ -3,8 +3,7 @@
  * and nowhere else. The debug panel (open the page with ?debug) is built from
  * this object, so a value added here shows up there.
  *
- * All numbers are starting points from docs/portal/handoff.md and the approved
- * storyboard. Vedant tunes them by feel.
+ * All numbers are starting points. Vedant tunes them by feel.
  */
 export const portalConfig = {
   space: {
@@ -32,8 +31,6 @@ export const portalConfig = {
     well: 0.42,
     // Share of the journey from rim to hole covered per second. 0.004 takes about four minutes.
     flow: 0.004,
-    // During ignition and the opening the flow runs this many times faster.
-    pullBoost: 10,
     gain: 1.0,
     brightAngle: 120,
   },
@@ -50,59 +47,37 @@ export const portalConfig = {
   prompt: {
     delayMs: 1200,
   },
-  recognition: {
-    // Generous on purpose: anything remotely like a circle passes.
-    resamplePx: 6,
-    maxRoundness: 0.5,
-    minSweepRad: 4.4,
-    closeGapFactor: 1.3,
-    fullSweepRad: 5.6,
-    // While the hand is still down, wait for a loop this complete before igniting.
-    liveSweepRad: 5.9,
-    // More than about a turn and a half is a spiral.
-    maxSweepRad: 9.5,
-    // A stroke smaller than this is noise, not a circle.
-    minRadiusPx: 14,
-    // Small circles are accepted and grown to at least this share of the short side.
-    minRingRadiusViewport: 0.09,
-    maxRingRadiusViewport: 0.46,
-    guideAfterFails: 2,
-  },
-  trail: {
-    // Width of the bright core. Slow strokes are soft and wide, fast ones thin.
-    coreSlowPx: 3.2,
-    coreFastPx: 1.5,
-    // Pointer speed, in px per ms, that counts as fast.
-    fastSpeed: 1.6,
-    failFadeMs: 500,
-  },
-  snap: {
-    ms: 240,
-    // The snapped circle is always this much bigger than the drawn stroke.
-    grow: 1.15,
-  },
-  ignition: {
-    ms: 1200,
-    chromaticSplit: 0.016,
-    cameraPush: 0.03,
-    lens: 0.75,
-  },
-  ring: {
-    width: 0.16,
-    intensity: 1.12,
+  dive: {
+    // Two ways in. A scroll plays the whole thing. A press and hold plays the
+    // first part for as long as it is held; let go early and it eases back.
+    //
+    // First part, the wrap: the camera rises over the hole until the tilted
+    // disc is a full circle in the middle of the screen.
+    wrapMs: 1500,
+    // Second part, the fall: straight down the throat.
+    fallMs: 1300,
+    // How high over the hole the wrap ends, and how far down the throat the fall ends. In hole radii.
+    height: 4.6,
+    depth: 0.9,
+    // The lens widens as it falls, which is most of the feeling of speed. Degrees.
+    fovEnd: 76,
+    // The flow of the grains runs this many times faster by the end of the fall.
+    pullBoost: 16,
+    // Strength of the streaks that rush past in the throat.
+    streaks: 1,
+    // Letting go early plays the wrap backwards this many times faster.
+    returnSpeed: 1.7,
   },
   opening: {
-    ms: 2100,
-    maxChromatic: 0.016,
-    swellMs: 150,
-    swellStrength: 0.55,
+    // The site opens from a point of light at the bottom of the throat.
+    // It starts this far through the fall and takes this long.
+    startAt: 0.55,
+    ms: 1100,
+    rim: 0.8,
     destinationScale: 1.35,
     destinationBlurPx: 10,
     // Share of the opening that passes before the page starts to settle.
     settleFrom: 0.3,
-    ringWidthEnd: 0.05,
-    starFade: 0.3,
-    push: 3,
   },
   reduced: {
     crossfadeMs: 400,
@@ -112,8 +87,6 @@ export const portalConfig = {
     vignette: 0.5,
     bloom: 0.22,
     bloomThreshold: 0.75,
-    // No colour fringing at rest: the space is black and white until the ring.
-    edgeFringe: 0,
   },
   quality: {
     // If the average frame takes longer than stepDownMs, draw fewer points. If it is

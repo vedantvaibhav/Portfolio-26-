@@ -1,31 +1,33 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type WheelEvent } from "react";
 import { portalConfig } from "@/portal/config";
-import type { Miss, Phase, PortalScene } from "@/portal/scene";
+import type { Phase, PortalScene } from "@/portal/scene";
+
+/** A touch that travels this far upward counts as a scroll. */
+const SWIPE_PX = 36;
 
 /**
- * The entry to the site. A full screen canvas sits above the destination.
- * The visitor draws a circle, it becomes a ring of light, and the site opens
- * through it. The scene module is loaded on demand so Three.js stays out of
- * the first bundle.
+ * The entry to the site. A full screen canvas sits above the destination and
+ * shows the wormhole. One scroll, or a press and hold, sends the camera over
+ * the hole and down it, and the site opens at the bottom. The scene module is
+ * loaded on demand so Three.js stays out of the first bundle.
  *
- * Nothing is on screen but the space and one line of type. Enter or Space
- * draws the circle for people who cannot, and a skip button appears on
+ * Nothing is on screen but the wormhole and one line of type. The arrow keys,
+ * Space and Enter do the same as a scroll, and a skip button appears on
  * keyboard focus only.
  */
 export function PortalEntry() {
   const [stage, setStage] = useState<"ritual" | "entered">("ritual");
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [miss, setMiss] = useState<Miss | undefined>();
-  const [nudge, setNudge] = useState(0);
 
   const coverRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<PortalScene | null>(null);
   const destinationRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const touchStart = useRef<number | null>(null);
 
   // What is under the cover is out of reach until the site opens.
   useEffect(() => {
@@ -34,20 +36,28 @@ export function PortalEntry() {
     // Set here, not in the markup, so the page still works with scripting off.
     const covered = [destination, ...document.querySelectorAll<HTMLElement>("[data-site-chrome]")];
     for (const element of covered) element.inert = stage === "ritual";
+    // Nothing behind the cover may scroll or widen the page while the way in plays.
+    document.documentElement.classList.toggle("portal-locked", stage === "ritual");
     if (stage === "entered") headingRef.current?.focus();
     return () => {
       for (const element of covered) element.inert = false;
+      document.documentElement.classList.remove("portal-locked");
     };
   }, [stage]);
+
+  /** Go in. Without the scene (it failed to load, or has not yet), just open the site. */
+  const go = () => {
+    if (sceneRef.current) sceneRef.current.begin("scroll");
+    else setStage("entered");
+  };
 
   useEffect(() => {
     if (stage !== "ritual") return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      if (event.target instanceof HTMLElement && event.target.closest(".lil-gui")) return;
+      if (!["Enter", " ", "ArrowDown", "PageDown"].includes(event.key)) return;
+      if (event.target instanceof HTMLElement && event.target.closest(".lil-gui, button")) return;
       event.preventDefault();
-      // Without the scene (it failed to load, or has not yet), just open the site.
-      if (sceneRef.current) sceneRef.current.igniteAtCentre();
+      if (sceneRef.current) sceneRef.current.begin("scroll");
       else setStage("entered");
     };
     window.addEventListener("keydown", onKey);
@@ -69,12 +79,8 @@ export function PortalEntry() {
       sceneRef.current = scene;
       scene.setElements(coverRef.current, destinationRef.current);
       scene.onReady = () => setReady(true);
-      scene.onPhase = (next, why) => {
+      scene.onPhase = (next) => {
         setPhase(next);
-        if (next === "fail" && why) {
-          setMiss(why);
-          setNudge((count) => count + 1);
-        }
         if (next === "done") setStage("entered");
       };
 
@@ -92,7 +98,6 @@ export function PortalEntry() {
         sceneRef.current = null;
         setReady(false);
         setPhase("idle");
-        setMiss(undefined);
       };
 
       if (new URLSearchParams(window.location.search).has("debug")) {
@@ -114,27 +119,37 @@ export function PortalEntry() {
     };
   }, [stage]);
 
+  // One scroll downward is enough.
+  const onWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (event.deltaY > 2) go();
+  };
+
+  // Press and hold: the wormhole wraps into a circle for as long as it is held.
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    sceneRef.current?.strokeStart(event.clientX, event.clientY);
+    touchStart.current = event.pointerType === "mouse" ? null : event.clientY;
+    sceneRef.current?.begin("hold");
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const scene = sceneRef.current;
     if (!scene) return;
-    // Pointer events can arrive faster than frames. Use every one for a smooth stroke.
-    const events = event.nativeEvent.getCoalescedEvents?.() ?? [];
-    for (const each of events.length ? events : [event.nativeEvent]) scene.strokeMove(each.clientX, each.clientY);
+    // On a touch screen, a swipe upward is the scroll.
+    if (touchStart.current !== null && touchStart.current - event.clientY > SWIPE_PX) {
+      touchStart.current = null;
+      scene.begin("scroll");
+    }
     // Touch has no hover. The lean is for pointers that can rest on the page.
     if (event.pointerType !== "touch") {
       scene.setPointer((event.clientX / window.innerWidth) * 2 - 1, 1 - (event.clientY / window.innerHeight) * 2);
     }
   };
 
-  const onPointerUp = () => sceneRef.current?.strokeEnd();
-
-  const waiting = phase === "idle" || phase === "fail";
+  const onPointerUp = () => {
+    touchStart.current = null;
+    sceneRef.current?.release();
+  };
 
   return (
     <>
@@ -168,7 +183,8 @@ export function PortalEntry() {
       {stage === "ritual" && (
         <div
           ref={coverRef}
-          className="portal-cover fixed inset-0 z-[60] cursor-crosshair touch-none select-none"
+          className="portal-cover fixed inset-0 z-[60] touch-none select-none"
+          onWheel={onWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -184,25 +200,18 @@ export function PortalEntry() {
           )}
           <canvas
             ref={canvasRef}
-            aria-label="A black screen with a wormhole: white grains turn slowly around a dark hole and fall into it. Draw a circle to open the site, or press Enter."
+            aria-label="A black screen with a wormhole: white grains turn slowly around a dark hole and fall into it. Scroll, or press and hold, to fall in and open the site. Enter does the same."
             className="portal-canvas absolute inset-0 size-full touch-none"
             data-ready={ready || undefined}
           />
+          {/* [PLACEHOLDER] wording, for Vedant to confirm. */}
           <p
-            key={nudge}
             className="portal-prompt pointer-events-none absolute inset-x-0 bottom-[9.5svh] isolate text-center font-mono text-[13px] tracking-[0.12em] text-[#e8ebf5]/70"
-            data-first={nudge === 0 || undefined}
-            data-hidden={!waiting || undefined}
-            aria-live="polite"
+            data-first
+            data-hidden={phase !== "idle" || undefined}
           >
-            {miss === "open" ? (
-              "Close the loop."
-            ) : (
-              <>
-                <span className="portal-fine">Draw a circle.</span>
-                <span className="portal-coarse">Draw a circle with your finger.</span>
-              </>
-            )}
+            <span className="portal-fine">Scroll or hold.</span>
+            <span className="portal-coarse">Swipe up or hold.</span>
           </p>
           <button
             type="button"

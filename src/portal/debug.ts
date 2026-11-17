@@ -6,18 +6,18 @@ import type { FrameStats, PortalScene } from "./scene";
  * Debug tools, loaded only when the URL has ?debug.
  * The panel is generated from the config object: one folder per group, a
  * colour picker for hex strings and a number field for everything else.
- * The timeline folder runs the opening without drawing, and scrubs it.
+ * The timeline folder starts the way in, pauses it and scrubs it.
  */
 export function createDebug(config: PortalConfig, scene: PortalScene) {
   const gui = new GUI({ title: "Portal" });
 
   const timeline = {
-    "ignite at centre": () => scene.igniteAtCentre(),
+    "go in": () => scene.begin("scroll"),
     paused: false,
     progress: 0,
   };
   const folder = gui.addFolder("timeline");
-  folder.add(timeline, "ignite at centre");
+  folder.add(timeline, "go in");
   folder.add(timeline, "paused").onChange((paused: boolean) => scene.pause(paused));
   folder.add(timeline, "progress", 0, 0.999, 0.001).onChange((progress: number) => scene.scrub(progress));
 
@@ -32,7 +32,7 @@ export function createDebug(config: PortalConfig, scene: PortalScene) {
     groupFolder.close();
   }
 
-  // For screenshots and tests: window.__portal.igniteAtCentre(), .scrub(0.4), .strokeStart(x, y) and so on.
+  // For screenshots and tests: window.__portal.begin("scroll"), .scrub(0.4), .release() and so on.
   (window as unknown as { __portal?: PortalScene }).__portal = scene;
 
   const meter = document.createElement("div");

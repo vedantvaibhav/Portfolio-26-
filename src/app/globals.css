@@ -75,6 +75,14 @@ body {
   }
 }
 
+/* While the entry plays, the page behind it holds still. The destination is
+   scaled up during the opening, and must not make the page wider. */
+html.portal-locked,
+html.portal-locked body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .portal-blob {
   position: absolute;
   border-radius: 50%;

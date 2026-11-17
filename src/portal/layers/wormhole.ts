@@ -183,9 +183,18 @@ export class Wormhole {
     this.builtThroat = throatKey;
   }
 
-  /** Where the hole sits, and how big a world unit is on screen. */
-  place(x: number, y: number, z: number, pixelsPerUnit: number, pixelRatio: number) {
+  /** How far below the sheet the black floor of the throat sits. */
+  get floorDepth() {
+    return -this.floor.position.y;
+  }
+
+  /** Where the hole sits. */
+  place(x: number, y: number, z: number) {
     this.group.position.set(x, y, z);
+  }
+
+  /** How big a world unit is on screen, one unit from the lens. Changes when the lens widens. */
+  setScale(pixelsPerUnit: number, pixelRatio: number) {
     this.material.uniforms.uPixelsPerUnit.value = pixelsPerUnit;
     this.material.uniforms.uPixelRatio.value = pixelRatio;
   }
