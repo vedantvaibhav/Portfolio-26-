@@ -117,27 +117,49 @@ html.portal-locked body {
   }
 }
 
-/* One quiet line. It waits a moment, then fades in. It steps back while the hand is down. */
-.portal-prompt {
-  opacity: 1;
-  transition: opacity 0.4s ease-out;
-}
-
-/* A soft pool of dark behind the words, so they read over the grain. */
-.portal-prompt::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: min(30rem, 92vw);
-  height: 9rem;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(closest-side, #000 22%, rgba(0, 0, 0, 0.78) 50%, transparent);
-  z-index: -1;
-}
-
-.portal-prompt[data-hidden] {
+/* The ring around the pointer while the screen is held. --hold runs 0 to 1. */
+.portal-ring {
+  width: 46px;
+  height: 46px;
   opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+.portal-ring svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.portal-ring-track {
+  stroke: rgba(239, 233, 221, 0.2);
+  stroke-width: 1.5;
+}
+
+.portal-ring-fill {
+  stroke: #efe9dd;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--hold, 0));
+}
+
+/* The ring is the cursor while it is up. */
+.portal-cover[data-holding] {
+  cursor: none;
+}
+
+/* A finger hides what is under it, so the ring is drawn wider on touch screens. */
+@media (pointer: coarse) {
+  .portal-ring {
+    width: 92px;
+    height: 92px;
+  }
+
+  .portal-fine {
+    display: none;
+  }
 }
 
 .portal-coarse {
@@ -145,33 +167,8 @@ html.portal-locked body {
 }
 
 @media (pointer: coarse) {
-  .portal-fine {
-    display: none;
-  }
-
   .portal-coarse {
     display: inline;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .portal-prompt[data-first] {
-    animation: portal-prompt-in 1.2s ease-out var(--portal-prompt-delay, 1.2s) both;
-  }
-
-  /* After a miss the line comes back in, so a change of words is noticed. */
-  .portal-prompt:not([data-first]) {
-    animation: portal-prompt-in 0.6s ease-out both;
-  }
-
-  .portal-prompt[data-hidden] {
-    animation: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .portal-canvas {
-    transition: none;
   }
 }
 
@@ -181,5 +178,11 @@ html.portal-locked body {
   }
   to {
     opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-canvas {
+    transition: none;
   }
 }

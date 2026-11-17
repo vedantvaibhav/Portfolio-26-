@@ -80,7 +80,13 @@ for (const { name, ...options } of viewports) {
   });
   await page.evaluate(() => {
     window.__portal.pause(true);
-    window.__portal.timeline.progress(0.5);
+    window.__portal.timeline.progress(0.4);
+    // The hold was started from here, not by a real pointer, so put the ring where it would be.
+    const scene = window.__portal;
+    const ring = document.querySelector(".portal-ring");
+    const x = ((scene.aim.x + 1) / 2) * innerWidth;
+    const y = ((1 - scene.aim.y) / 2) * innerHeight;
+    ring.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
   });
   await page.waitForTimeout(1300);
   await shot("2-hold-off-centre");

@@ -73,6 +73,8 @@ export const portalConfig = {
     travel: 1,
     // The flow of the wormhole runs this many times faster by the end.
     pullBoost: 6,
+    // A hold runs this many times faster than a scroll.
+    holdSpeed: 1.2,
     // Letting go early plays it backwards this many times faster.
     returnSpeed: 1.6,
     // A hold counts if it lands within this many hole radii of the centre.

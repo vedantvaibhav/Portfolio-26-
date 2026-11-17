@@ -28,10 +28,10 @@ The home page opens on a black screen with a wormhole, rendered in WebGL above a
 Open `/?debug` for the FPS meter and a panel that mirrors the config. Its timeline folder starts the way in, pauses it and scrubs through it.
 
 ```bash
-pnpm portal:shots m10
+pnpm portal:shots m11
 ```
 
-That writes a still of every beat, desktop and phone, to `docs/portal/shots/m10/`, and checks the hold and the scroll. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
+That writes a still of every beat, desktop and phone, to `docs/portal/shots/m11/`, and checks the hold and the scroll. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
 
 ## Pinned versions
 

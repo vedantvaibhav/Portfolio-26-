@@ -15,9 +15,9 @@ const SWIPE_PX = 36;
  * that same black. The scene module is loaded on demand so Three.js stays out
  * of the first bundle.
  *
- * Nothing is on screen but the wormhole and one line of type. The arrow keys,
- * Space and Enter do the same as a scroll, and a skip button appears on
- * keyboard focus only.
+ * The only instruction on screen is the line in the middle of the hole. A
+ * scroll, the arrow keys, Space and Enter all work too, unannounced, and a
+ * skip button appears on keyboard focus only.
  */
 export function PortalEntry() {
   const [stage, setStage] = useState<"ritual" | "entered">("ritual");
@@ -31,6 +31,12 @@ export function PortalEntry() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const touchStart = useRef<number | null>(null);
   const labelRef = useRef<HTMLParagraphElement>(null);
+  const ringRef = useRef<HTMLDivElement>(null);
+
+  /** Keep the hold ring under the pointer. */
+  const moveRing = (x: number, y: number) => {
+    if (ringRef.current) ringRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+  };
 
   // What is under the cover is out of reach until the site opens.
   useEffect(() => {
@@ -80,7 +86,7 @@ export function PortalEntry() {
 
       const scene = new PortalScene(canvas, portalConfig);
       sceneRef.current = scene;
-      scene.setElements(coverRef.current, destinationRef.current, labelRef.current);
+      scene.setElements(coverRef.current, destinationRef.current, labelRef.current, ringRef.current);
       scene.onReady = () => setReady(true);
       scene.onPhase = (next) => {
         setPhase(next);
@@ -132,12 +138,14 @@ export function PortalEntry() {
     if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     touchStart.current = event.pointerType === "mouse" ? null : event.clientY;
+    moveRing(event.clientX, event.clientY);
     sceneRef.current?.hold(event.clientX, event.clientY);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const scene = sceneRef.current;
     if (!scene) return;
+    moveRing(event.clientX, event.clientY);
     // On a touch screen, a swipe upward is the scroll.
     if (touchStart.current !== null && touchStart.current - event.clientY > SWIPE_PX) {
       touchStart.current = null;
@@ -217,15 +225,14 @@ export function PortalEntry() {
             <span className="portal-fine">Press and hold</span>
             <span className="portal-coarse">Tap and hold</span>
           </p>
-          {/* [PLACEHOLDER] wording, for Vedant to confirm. */}
-          <p
-            className="portal-prompt pointer-events-none absolute inset-x-0 bottom-[7svh] isolate text-center font-mono text-[13px] tracking-[0.12em] text-[#e8ebf5]/70"
-            data-first
-            data-hidden={phase !== "idle" || undefined}
-          >
-            <span className="portal-fine">Scroll</span>
-            <span className="portal-coarse">Swipe up</span>
-          </p>
+          {/* The ring around the pointer while the screen is held. It fills as the hold goes on:
+              when it closes, the grains are gone. */}
+          <div ref={ringRef} className="portal-ring pointer-events-none absolute left-0 top-0" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none">
+              <circle cx="24" cy="24" r="21" className="portal-ring-track" />
+              <circle cx="24" cy="24" r="21" pathLength="1" className="portal-ring-fill" />
+            </svg>
+          </div>
           <button
             type="button"
             onClick={() => setStage("entered")}

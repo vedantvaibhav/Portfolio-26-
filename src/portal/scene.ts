@@ -90,6 +90,9 @@ export class PortalScene {
   private cover: HTMLElement | null = null;
   private destination: HTMLElement | null = null;
   private label: HTMLElement | null = null;
+  /** The ring around the pointer that fills while the screen is held. */
+  private ring: HTMLElement | null = null;
+  private holding = false;
   /** Where the pointer is, eased, and how strongly the grains feel it. */
   private hoverAt = new Vector2();
   private hoverTo = new Vector2();
@@ -151,10 +154,16 @@ export class PortalScene {
   }
 
   /** The cover fades to show the site. The destination settles into place as it does. */
-  setElements(cover: HTMLElement | null, destination: HTMLElement | null, label: HTMLElement | null) {
+  setElements(
+    cover: HTMLElement | null,
+    destination: HTMLElement | null,
+    label: HTMLElement | null,
+    ring: HTMLElement | null,
+  ) {
     this.cover = cover;
     this.destination = destination;
     this.label = label;
+    this.ring = ring;
   }
 
   /** Pointer position, -1 to 1 on each axis, y up. Ignored once the way in has started. */
@@ -181,7 +190,8 @@ export class PortalScene {
       this.target.copy(this.aim);
     }
     this.committed = true;
-    this.play();
+    this.holding = false;
+    this.play(1);
   }
 
   /**
@@ -194,7 +204,8 @@ export class PortalScene {
     if (!this.insideHole(x, y)) return false;
     this.aim.set((x / this.width) * 2 - 1, 1 - (y / this.height) * 2);
     if (this.phase === "idle") this.target.copy(this.aim);
-    this.play();
+    this.holding = true;
+    this.play(this.config.drain.holdSpeed);
     return true;
   }
 
@@ -206,6 +217,7 @@ export class PortalScene {
 
   /** The hold was let go. Before everything is gone, the grains come back. After, nothing changes. */
   release() {
+    this.holding = false;
     if (this.committed || this.phase !== "draining" || !this.timeline) return;
     this.timeline.timeScale(this.config.drain.returnSpeed).reverse();
   }
@@ -221,11 +233,13 @@ export class PortalScene {
     this.timeline?.pause().progress(progress);
   }
 
-  private play() {
+  private play(speed: number) {
     if (!this.timeline) {
       const hooks = {
         onGone: () => {
           this.committed = true;
+          this.holding = false;
+          this.timeline?.timeScale(1); // the site appears at its own pace, however it was reached
           this.setPhase("appearing");
         },
         onDone: () => this.finish(),
@@ -237,7 +251,7 @@ export class PortalScene {
     }
     this.pointer.copy(this.lean); // hold the camera's lean where it is
     if (this.phase === "idle") this.setPhase("draining");
-    this.timeline.timeScale(1).play();
+    this.timeline.timeScale(speed).play();
   }
 
   /** The centre of the hole's lip, in world space, and the way the hole faces. */
@@ -335,6 +349,13 @@ export class PortalScene {
       const y = ((1 - this.holeAt.y) / 2) * this.height;
       this.label.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%)`;
     }
+
+    // The ring around the pointer fills as the hold goes on, and empties if it is let go.
+    if (this.ring) {
+      this.ring.style.setProperty("--hold", fx.drain.toFixed(4));
+      this.ring.style.opacity = this.holding ? "1" : "0";
+    }
+    this.cover?.toggleAttribute("data-holding", this.holding);
 
     // The point the grains drain to follows the hold, a little behind it.
     this.target.lerp(this.aim, 1 - Math.exp(-dt * 10));
