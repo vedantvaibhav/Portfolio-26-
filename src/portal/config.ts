@@ -8,18 +8,9 @@
  */
 export const portalConfig = {
   space: {
-    // Black and white. Colour only arrives with the ring.
-    deep: "#010101",
-    lift: "#050505",
-    nebulaIndigo: "#3a3a3a",
-    nebulaMarigold: "#2a2a2a",
-    nebulaCoral: "#2a2a2a",
-    nebulaStrength: 0.08,
-  },
-  stars: {
-    // Stars in a 16:9 view.
-    count: 4200,
-    twinkle: 0.35,
+    // Pure black. There is nothing in the frame but the wormhole.
+    deep: "#000000",
+    lift: "#000000",
   },
   wormhole: {
     // Points in the cloud. Phones use about a third.

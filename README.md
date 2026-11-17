@@ -22,7 +22,7 @@ The home page opens on a black and white wormhole, rendered in WebGL above a pla
 - `src/portal/scene.ts` is the scene class (`enter`, `update`, `resize`, `teardown`) and runs the ritual.
 - `src/portal/ritual.ts` is the master timeline, from the loop closing to the site.
 - `src/portal/recognize.ts` decides whether a stroke is a circle. `pnpm test` runs its tests.
-- `src/portal/layers/` holds one file per thing in the scene: nebula, stars, wormhole, trail.
+- `src/portal/layers/` holds one file per thing in the scene: the wormhole and the trail.
 - `src/portal/effects.ts` holds the screen space pieces: the lens, the ring and its light, and the final pass that cuts the hole.
 - `src/components/portal/portal-entry.tsx` mounts the canvas, feeds it the pointer and loads the scene on demand.
 

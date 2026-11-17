@@ -138,7 +138,7 @@ export class Wormhole {
     this.points.renderOrder = 2;
     this.points.visible = false;
 
-    // Black walls and a black floor for the throat. They draw first and hide the stars behind the hole.
+    // Black walls and a black floor for the throat, so the far side of the sheet does not show through the hole.
     this.throat = new Mesh(new BufferGeometry(), this.black);
     this.floor = new Mesh(new CircleGeometry(1, 64), this.black);
     this.floor.rotation.x = -Math.PI / 2;

@@ -11,8 +11,6 @@ import {
 } from "postprocessing";
 import type { PortalConfig } from "./config";
 import { LensEffect, LightEffect, createFinalMaterial } from "./effects";
-import { Nebula } from "./layers/nebula";
-import { Stars } from "./layers/stars";
 import { Trail } from "./layers/trail";
 import { Wormhole } from "./layers/wormhole";
 import { judgeStroke, ringRadius } from "./recognize";
@@ -66,8 +64,6 @@ export class PortalScene {
   private scene = new Scene();
   private camera: PerspectiveCamera;
 
-  private nebula = new Nebula();
-  private stars = new Stars();
   private wormhole = new Wormhole();
   private trail = new Trail();
 
@@ -127,8 +123,6 @@ export class PortalScene {
 
     this.camera = new PerspectiveCamera(config.camera.fov, 1, 0.5, 600);
     this.scene.add(
-      this.nebula.backdrop,
-      this.stars.points,
       this.wormhole.group,
       this.trail.ribbon,
       this.trail.head,
@@ -161,8 +155,6 @@ export class PortalScene {
     this.camera.fov = config.camera.fov;
     this.camera.updateProjectionMatrix();
 
-    this.nebula.apply(config);
-    this.stars.apply(config);
     this.wormhole.apply(config, window.matchMedia("(pointer: coarse)").matches);
     this.trail.apply(config);
 
@@ -326,11 +318,6 @@ export class PortalScene {
       Math.sin(t * 0.19) * c.breathe - fx.push * ignition.cameraPush * this.config.wormhole.depth,
     );
 
-    // The haze is at infinity: it follows the turn of the camera, not its slide.
-    const perHeight = 2 * Math.tan((this.camera.fov * Math.PI) / 360);
-    this.nebula.render(this.renderer, t, Math.tan(yaw) / perHeight, Math.tan(pitch) / perHeight);
-
-    this.stars.update(t, fx.stars);
     // The pull of the ring speeds the whole disc up.
     const hole = this.config.wormhole;
     this.wormhole.update(dt * this.motion, dt, hole.flow * (1 + (fx.pull + fx.warp * 2) * hole.pullBoost), fx.stars);
@@ -398,8 +385,6 @@ export class PortalScene {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
 
-    this.nebula.resize(width * dpr, height * dpr);
-    this.stars.resize(height, dpr);
     this.trail.resize(width, height, dpr);
     this.glow.setBufferSize(Math.floor(width * dpr), Math.floor(height * dpr));
     this.final.uniforms.uAspect.value = width / height;
@@ -415,8 +400,6 @@ export class PortalScene {
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.timeline?.kill();
     this.failTween?.kill();
-    this.nebula.dispose();
-    this.stars.dispose();
     this.wormhole.dispose();
     this.trail.dispose();
     this.final.dispose();
