@@ -1,18 +1,26 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, IBM_Plex_Mono, Newsreader } from "next/font/google";
 import { SmoothScroll } from "@/components/motion/smooth-scroll";
 import { SiteNav } from "@/components/site/site-nav";
 import "./globals.css";
 
-// Placeholder faces. The real type choice comes with the art direction.
+// Geist is a placeholder for body text. IBM Plex Mono and Newsreader italic
+// are Vedant's current choices for the prompt and the headline.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
+});
+
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  style: ["italic"],
 });
 
 export const metadata: Metadata = {
@@ -29,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      className={`${geistSans.variable} ${plexMono.variable} ${newsreader.variable} antialiased`}
     >
       <body>
         <SmoothScroll />

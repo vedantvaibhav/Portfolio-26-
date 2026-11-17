@@ -66,8 +66,8 @@
   <header>
     <p class="mono">vedantvaibhav.com · the entry · for approval</p>
     <h1>Draw a circle. The site opens from it.</h1>
-    <p>Six beats, twelve frames, five decisions. Approve the sequence and pick an option for each decision, and I start building.</p>
-    <p class="note">These are concept stills. I rendered them with a throwaway shader so every frame is something WebGL can really do, but none of this is the build. The planets and the interface pieces stand in for Blender models. The bloom is faked. The destination is the placeholder from your 2D prototype.</p>
+    <p>Version 2. Six beats, eight frames, with your five changes applied. The list of what changed is under the sequence.</p>
+    <p class="note">These are concept stills. I rendered them with a throwaway shader so every frame is something WebGL can really do, but none of this is the build. The planets stand in for Blender models. The bloom is faked. The destination is the placeholder from your 2D prototype.</p>
   </header>
 
   <section aria-labelledby="timing">
@@ -87,7 +87,7 @@
     <h2 id="strip">The sequence</h2>
 
     <div class="beat">
-      <figure><img src="frames/arrival-distant.jpg" width="2400" height="1350" alt="Dark open space with a faint indigo haze, sparse stars, a half lit planet far to the upper right, a tiny second planet to the left, and four small pieces of interface drifting near the edges. A quiet line of mono type at the bottom reads Draw a circle." loading="lazy"></figure>
+      <figure><img src="frames/arrival.jpg" width="2400" height="1350" alt="Very dark open space with sparse stars, a barely visible indigo haze, a small dim half lit planet far to the upper right and a tiny second planet to the left. A quiet line of mono type at the bottom reads Draw a circle." loading="lazy"></figure>
       <div class="slate">
         <div class="head"><p class="mono">Beat 1 · 0 to about 3 s</p><h3>Arrival</h3></div>
         <ul>
@@ -114,12 +114,13 @@
     </div>
 
     <div class="beat">
-      <figure><img src="frames/snap.jpg" width="2400" height="1350" alt="The hand drawn stroke has become a thin, perfect circle of white light with a soft blue glow, centred where the visitor drew." loading="lazy"></figure>
+      <figure><img src="frames/snap.jpg" width="2400" height="1350" alt="A thin, perfect circle of white light with a soft blue glow. The fading hand drawn stroke sits just inside it, showing that the circle is a little bigger than what was drawn." loading="lazy"></figure>
       <div class="slate">
         <div class="head"><p class="mono">Beat 3 · 0 to 240 ms</p><h3>Recognition</h3></div>
         <ul>
           <li>The check runs while the hand is still moving. The moment the loop closes, it fires.</li>
           <li>The stroke snaps to a perfect circle around its own centre. It should feel magnetic.</li>
+          <li>The circle always lands 15% bigger than the stroke, however it was drawn. The faint line inside it in this frame is the stroke.</li>
           <li>One haptic tick on phones. One soft glass ping.</li>
         </ul>
       </div>
@@ -139,11 +140,12 @@
     </div>
 
     <div class="beat">
-      <figure><img src="frames/ignition-soft.jpg" width="2400" height="1350" alt="The circle has become a thick, soft ring of rainbow light, red on the outside and violet on the inside, with a warm glow around it. The space inside the ring is darker and the stars near its edge bend. Short streaks of light point inward toward the ring." loading="lazy"></figure>
+      <figure><img src="frames/ignition.jpg" width="2400" height="1350" alt="The circle has become a thick, soft ring of rainbow light, red on the outside and violet on the inside, with a warm glow around it. The colours of the ring are slightly pulled apart, and stars across the frame carry thin red and blue fringes. The space inside the ring is darker and the stars near its edge bend." loading="lazy"></figure>
       <div class="slate">
         <div class="head"><p class="mono">Beat 4 · 240 to 900 ms</p><h3>Ignition</h3></div>
         <ul>
           <li>The circle becomes the ring. Red outside, blue inside, colour sliding slowly around it.</li>
+          <li>A little chromatic split as it lights: the ring's colours pull apart slightly and the stars pick up thin red and blue fringes. It eases off as the ring settles.</li>
           <li>The space inside starts to lens. Stars near the edge bend.</li>
           <li>Dust is pulled toward the ring. The camera pushes in a few percent.</li>
           <li>Sound: a low rumble rising.</li>
@@ -182,50 +184,21 @@
     </div>
   </section>
 
-  <section aria-labelledby="decisions">
-    <h2 id="decisions">Five things to decide</h2>
-
-    <div class="decision">
-      <h3>1. Where the planet sits</h3>
-      <div class="pair">
-        <figure><img src="frames/arrival-distant.jpg" width="2400" height="1350" alt="Option A. A small half lit planet far away in the upper right, with most of the frame left empty." loading="lazy"><figcaption>A. Distant. <span class="pick">My pick.</span></figcaption></figure>
-        <figure><img src="frames/arrival-limb.jpg" width="2400" height="1350" alt="Option B. The curved edge of a very large planet fills the lower right corner, lit along its upper rim with a thin blue atmosphere." loading="lazy"><figcaption>B. Limb.</figcaption></figure>
-      </div>
-      <p>A leaves the centre empty, so the ring is the only event. B is the more dramatic still, but the planet's lit rim is a second glow and it sits under the prompt.</p>
-    </div>
-
-    <div class="decision">
-      <h3>2. Interface pieces in the debris</h3>
-      <div class="pair">
-        <figure><img src="frames/debris-detail.jpg" width="2400" height="1350" alt="Close view of four objects floating in space: a cursor arrow, a marigold toggle switch, a bezier handle with a marigold anchor, and a blurred button." loading="lazy"><figcaption>The four pieces, close up. Cursor, toggle, bezier handle, button.</figcaption></figure>
-        <figure><img src="frames/arrival-plain.jpg" width="2400" height="1350" alt="The arrival frame with no interface pieces. Only stars, haze, planets and soft dust." loading="lazy"><figcaption>Arrival without them.</figcaption></figure>
-      </div>
-      <p><span class="pick">My pick: keep them.</span> Four or five pieces, small, near the edges, most of them out of focus. They are the one thing in the frame that could only be your site. The marigold toggle is also the only brand colour on screen before the ring.</p>
-    </div>
-
-    <div class="decision">
-      <h3>3. The ring</h3>
-      <div class="pair">
-        <figure><img src="frames/ignition-soft.jpg" width="2400" height="1350" alt="Option A. A thick, soft rainbow band with a wide warm glow." loading="lazy"><figcaption>A. Soft band. <span class="pick">My pick.</span></figcaption></figure>
-        <figure><img src="frames/ignition-prism.jpg" width="2400" height="1350" alt="Option B. A thin, sharp rainbow line with a faint second ring outside it." loading="lazy"><figcaption>B. Prism line.</figcaption></figure>
-      </div>
-      <p>A is closer to the Lusion ring and takes bloom well. B is more precise and reads more like optics, but it is thinner on a phone and has less to give when it expands.</p>
-    </div>
-
-    <div class="decision">
-      <h3>4. What is behind the ring for now</h3>
-      <p>I used the destination from your prototype: dark, with marigold, coral and indigo colour fields. It makes the opening read clearly because the site is warmer and brighter than space. Keep it as the placeholder, or tell me what you'd rather see through the ring.</p>
-    </div>
-
-    <div class="decision">
-      <h3>5. Small things I chose without asking</h3>
-      <ul class="plain">
-        <li>Prompt in sentence case, as you wrote it.</li>
-        <li>Sound toggle bottom left, Enter bottom right, both at low contrast.</li>
-        <li>The trail and the snapped circle are white with a blue glow. Colour only arrives at ignition.</li>
-        <li>The planet's atmosphere rim is cool blue. The warm colours stay in the far haze.</li>
-      </ul>
-    </div>
+  <section aria-labelledby="changes">
+    <h2 id="changes">What changed in version 2</h2>
+    <ul class="plain">
+      <li><strong>Darker space.</strong> The background is close to black now, the haze is about half as strong, and the vignette is deeper.</li>
+      <li><strong>No interface pieces.</strong> The cursor, toggle, bezier handle and button are gone. Only stars, haze, planets and faint dust remain.</li>
+      <li><strong>Planets far away, and darker.</strong> The distant layout stays. Both planets are smaller and dimmer so they sit back.</li>
+      <li><strong>A bigger circle.</strong> The snapped circle is always 15% larger than the stroke.</li>
+      <li><strong>Chromatic split at ignition.</strong> Kept small, as you asked.</li>
+    </ul>
+    <h3>Settled</h3>
+    <ul class="plain">
+      <li>The soft band ring.</li>
+      <li>The destination from your prototype as the placeholder behind the ring.</li>
+      <li>Sound toggle bottom left, Enter bottom right. White trail with a blue glow. Cool blue planet rim.</li>
+    </ul>
   </section>
 
   <section aria-labelledby="variants">
@@ -246,6 +219,7 @@
       <li><strong>Phone portrait.</strong> Every frame here is 16:9. The portrait composition needs its own pass in milestone 1.</li>
       <li><strong>Lensing.</strong> It is subtle in a still. It reads in motion, when stars slide across the ring edge. I'll confirm in milestone 3.</li>
       <li><strong>The swell.</strong> The late opening frame may be too milky. That gets tuned on the timeline, not here.</li>
+      <li><strong>How dark is dark enough.</strong> A still on your screen is the test. If version 2 is still too bright or now too empty, say so and I'll set the build to match.</li>
       <li><strong>The headline through the ring.</strong> At 124 px it is the loudest thing in the opening. That depends on the real site, which isn't designed yet.</li>
     </ul>
   </section>

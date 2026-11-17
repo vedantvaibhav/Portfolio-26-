@@ -47,7 +47,7 @@ precision highp float;
 out vec4 o;
 uniform vec2 uRes; uniform float uT;
 uniform vec2 uRingC; uniform float uRingR, uRingI, uRingW, uThin, uGuide, uPrism;
-uniform float uLens, uWarp, uCA, uHole, uSwell, uPull, uUI, uZoom, uTrailA, uStarFade;
+uniform float uLens, uWarp, uCA, uHole, uSwell, uPull, uZoom, uRingCA, uTrailA, uStarFade;
 uniform vec2 uPan; uniform int uComp, uTrailN; uniform vec2 uTrail[96];
 const float PI = 3.14159265, TAU = 6.2831853;
 
@@ -83,10 +83,10 @@ vec3 starLayer(vec2 p, float scale, float seed, float size, float density){
 vec3 nebula(vec2 p){
   vec2 q=p*1.25+vec2(fbm(p*1.1+3.0), fbm(p*1.1+11.0))*0.9;
   float n=fbm(q*1.4+uT*0.01);
-  vec3 col=vec3(0.20,0.255,0.42)*smoothstep(0.30,0.82,n)*0.50;
+  vec3 col=vec3(0.20,0.255,0.42)*smoothstep(0.34,0.86,n)*0.24;
   float w=fbm(q*2.2+20.);
-  col+=vec3(0.914,0.639,0.129)*smoothstep(0.52,0.85,fbm(p*0.9+vec2(7.,2.)))*smoothstep(.40,.8,w)*0.16;
-  col+=vec3(0.945,0.663,0.549)*smoothstep(0.55,0.9,fbm(p*0.8+vec2(-4.,9.)))*smoothstep(.38,.8,w)*0.15;
+  col+=vec3(0.914,0.639,0.129)*smoothstep(0.52,0.85,fbm(p*0.9+vec2(7.,2.)))*smoothstep(.40,.8,w)*0.085;
+  col+=vec3(0.945,0.663,0.549)*smoothstep(0.55,0.9,fbm(p*0.8+vec2(-4.,9.)))*smoothstep(.38,.8,w)*0.08;
   col*=0.55+0.9*smoothstep(0.2,0.7,fbm(q*3.0+40.));
   return col;
 }
@@ -111,55 +111,15 @@ void planet(inout vec3 col, vec2 p, vec2 c, float R, vec3 L, vec3 A, vec3 B, flo
   col+=atmo*(exp(-e/0.03)*smoothstep(-0.45,0.35,lim)*0.5 + exp(-e/0.16)*smoothstep(-0.2,0.7,lim)*0.10)*step(1.0,d);
 }
 
-// ---- interface debris ----
-float sdRB(vec2 p, vec2 b, float r){ vec2 q=abs(p)-b+r; return length(max(q,0.))+min(max(q.x,q.y),0.)-r; }
-float sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; return length(pa-ba*clamp(dot(pa,ba)/dot(ba,ba),0.,1.)); }
-float sdCursor(vec2 p){
-  vec2 v[7]=vec2[7](vec2(0.,0.5),vec2(0.70,-0.20),vec2(0.40,-0.22),vec2(0.56,-0.58),vec2(0.42,-0.64),vec2(0.26,-0.28),vec2(0.,-0.5));
-  p.x+=0.33;
-  float d=dot(p-v[0],p-v[0]), s=1.;
-  for(int i=0,j=6;i<7;j=i,i++){ vec2 e=v[j]-v[i], w=p-v[i]; vec2 b=w-e*clamp(dot(w,e)/dot(e,e),0.,1.); d=min(d,dot(b,b));
-    bvec3 c=bvec3(p.y>=v[i].y, p.y<v[j].y, e.x*w.y>e.y*w.x); if(all(c)||all(not(c))) s*=-1.; }
-  return s*sqrt(d)-0.035;
-}
-float uiMat;
-float uiSDF(int k, vec2 p){
-  uiMat=0.;
-  if(k==0) return sdCursor(p);
-  if(k==1){ float t=sdRB(p,vec2(0.9,0.5),0.5), kn=length(p-vec2(0.4,0.))-0.37; if(kn<0.) uiMat=1.; else uiMat=2.; return t; }
-  if(k==2){ float l=sdSeg(p,vec2(-0.9,0.),vec2(0.9,0.))-0.028; float a=sdRB(p,vec2(0.13),0.02);
-    float e=min(length(p-vec2(-0.9,0.)),length(p-vec2(0.9,0.)))-0.11; float d=min(l,min(a,e)); if(a<0.) uiMat=2.; return d; }
-  float b=sdRB(p,vec2(1.0,0.36),0.2); if(sdRB(p,vec2(0.5,0.045),0.045)<0.) uiMat=3.; return b;
-}
-void piece(inout vec3 col, vec2 p, int k, vec2 pos, float rot, float sc, float blur, float alpha, vec3 L){
-  vec2 q=rot2(rot)*(p-pos)/sc;
-  if(max(abs(q.x),abs(q.y))>1.8+blur*2.) return;
-  float e=0.02;
-  float dx=uiSDF(k,q+vec2(e,0.)), dy=uiSDF(k,q+vec2(0.,e)), d=uiSDF(k,q); float mat=uiMat;
-  vec2 g=vec2(dx-d,dy-d)/e;
-  float h=clamp(-d/0.12,0.,1.);
-  vec3 n=normalize(vec3(g*(1.-h)*1.5,1.0)); n.xy=transpose(rot2(rot))*n.xy;
-  float ndl=dot(n,L);
-  vec3 base=vec3(0.80,0.78,0.74);
-  if(mat==2.) base=vec3(0.914,0.639,0.129);
-  if(mat==3.) base=vec3(0.30,0.33,0.45);
-  if(mat==1.) base=vec3(0.95,0.94,0.90);
-  vec3 c=base*(0.06+0.95*smoothstep(-0.3,0.95,ndl))+vec3(0.2,0.255,0.42)*0.22*(1.-smoothstep(-0.3,0.6,ndl));
-  c+=vec3(1.0,0.9,0.8)*pow(max(ndl,0.),12.)*0.25*(1.-h);
-  float px=1.5/(sc*uRes.y*uZoom);
-  float b=max(blur,px);
-  col=mix(col,c,smoothstep(b,-b,d)*alpha);
-}
-
 vec3 background(vec2 p){
-  vec3 col=mix(vec3(0.020,0.024,0.040), vec3(0.043,0.059,0.110), smoothstep(-0.6,0.7,p.y*0.8+p.x*0.35+0.25*fbm(p*0.7)));
+  vec3 col=mix(vec3(0.006,0.008,0.015), vec3(0.017,0.023,0.046), smoothstep(-0.6,0.7,p.y*0.8+p.x*0.35+0.25*fbm(p*0.7)));
   col+=nebula(p);
   vec3 st=starLayer(p,46.,1.,0.00080,0.26)*0.50+starLayer(p,82.,7.,0.00065,0.22)*0.32+starLayer(p,22.,13.,0.0012,0.13)*0.95;
-  col+=st*uStarFade;
+  col+=st*uStarFade*0.82;
   vec3 L=normalize(vec3(-0.72,0.38,0.42));
   if(uComp==0){
-    planet(col,p,vec2(0.52,0.20),0.088,L,vec3(0.12,0.15,0.25),vec3(0.36,0.30,0.30),2.0,vec3(0.45,0.62,1.0));
-    planet(col,p,vec2(-0.585,-0.17),0.021,L,vec3(0.30,0.24,0.22),vec3(0.62,0.50,0.40),5.0,vec3(0.95,0.66,0.50));
+    planet(col,p,vec2(0.56,0.23),0.060,L,vec3(0.085,0.105,0.18),vec3(0.25,0.21,0.21),2.0,vec3(0.34,0.47,0.80));
+    planet(col,p,vec2(-0.60,-0.17),0.014,L,vec3(0.20,0.16,0.15),vec3(0.42,0.34,0.28),5.0,vec3(0.70,0.48,0.36));
   } else if(uComp==1){
     planet(col,p,vec2(0.70,-1.02),0.86,L,vec3(0.11,0.14,0.24),vec3(0.34,0.28,0.29),2.0,vec3(0.45,0.62,1.0));
     planet(col,p,vec2(-0.52,0.27),0.034,L,vec3(0.30,0.24,0.22),vec3(0.62,0.50,0.40),5.0,vec3(0.95,0.66,0.50));
@@ -168,18 +128,7 @@ vec3 background(vec2 p){
   for(int i=0;i<7;i++){ float fi=float(i);
     vec2 c=(h22(vec2(fi,3.7))-0.5)*vec2(1.9,1.05); float r=0.008+0.03*h21(vec2(fi,8.2));
     float m=smoothstep(r,r*0.55,length(p-c));
-    col+=mix(vec3(0.35,0.42,0.7),vec3(0.9,0.7,0.5),h21(vec2(fi,1.3)))*m*(0.018+0.03*h21(vec2(fi,5.5)));
-  }
-  if(uUI>1.5){
-    piece(col,p,0,vec2(-0.50,0.03),0.55,0.150,0.030,1.,L);
-    piece(col,p,1,vec2(-0.05,-0.14),-0.35,0.105,0.045,1.,L);
-    piece(col,p,2,vec2(0.47,0.10),0.9,0.170,0.085,0.95,L);
-    piece(col,p,3,vec2(0.02,0.27),0.22,0.150,0.30,0.6,L);
-  } else if(uUI>0.){
-    piece(col,p,0,vec2(-0.60,0.215),0.55,0.040,0.05,uUI,L);
-    piece(col,p,1,vec2(0.585,-0.265),-0.35,0.030,0.10,uUI,L);
-    piece(col,p,2,vec2(0.20,0.385),0.9,0.050,0.16,uUI*0.9,L);
-    piece(col,p,3,vec2(-0.74,-0.43),0.30,0.11,0.55,uUI*0.38,L);
+    col+=mix(vec3(0.35,0.42,0.7),vec3(0.9,0.7,0.5),h21(vec2(fi,1.3)))*m*(0.008+0.014*h21(vec2(fi,5.5)));
   }
   return col;
 }
@@ -196,7 +145,7 @@ vec3 ringLight(vec2 p){
     col=spectral(clamp(0.5+0.36*x+film,0.,1.))*exp(-x*x*0.9)*0.92;
     col+=vec3(1.0,0.97,0.92)*exp(-x*x*22.0)*0.30;
     vec3 tint=mix(vec3(0.42,0.55,1.0),vec3(1.0,0.56,0.42),smoothstep(-2.5,2.5,x));
-    col+=tint*(0.19*exp(-abs(x)/2.4)+0.10*exp(-abs(x)/8.0)+0.045*exp(-abs(x)/24.0));
+    col+=tint*(0.17*exp(-abs(x)/2.4)+0.075*exp(-abs(x)/8.0)+0.022*exp(-abs(x)/24.0));
   } else {
     col=spectral(clamp(0.5+0.47*x+film*0.6,0.,1.))*smoothstep(1.3,0.7,abs(x))*1.15;
     col+=spectral(clamp(0.5+0.47*(x-3.2)*1.6,0.,1.))*smoothstep(1.0,0.5,abs(x-3.2)*1.6)*0.22;
@@ -246,10 +195,12 @@ vec4 scene(vec2 p){
   float a=1.;
   if(uHole>0.) a=smoothstep(uHole*0.84,uHole*0.97,r);
   // vignette and grain belong to the space, not to the DOM behind the hole
-  col*=1.-0.38*smoothstep(0.35,1.05,length(p*vec2(0.92,1.15)));
+  col*=1.-0.50*smoothstep(0.30,1.05,length(p*vec2(0.92,1.15)));
   col*=a;
   vec3 light=vec3(0.);
-  if(uRingI>0.) light+=ringLight(p);
+  if(uRingI>0.){ vec3 rl=ringLight(p);
+    if(uRingCA>0.){ rl.r=ringLight(uRingC+q*(1.-uRingCA)).r; rl.b=ringLight(uRingC+q*(1.+uRingCA)).b; }
+    light+=rl; }
   if(uThin>0.){ float d=abs(r-uRingR); light+=(vec3(1.0,0.99,0.97)*exp(-d*d/(0.0016*0.0016))*1.5+vec3(0.5,0.66,1.0)*(0.5*exp(-d/0.008)+0.12*exp(-d/0.03)))*uThin; }
   if(uGuide>0.){ float d=abs(r-uRingR); float dash=smoothstep(0.25,0.15,abs(fract(atan(q.y,q.x)/TAU*72.)-0.5)); light+=vec3(0.8,0.85,1.0)*exp(-d*d/(0.0011*0.0011))*dash*uGuide; }
   light+=trail(p);
@@ -272,8 +223,8 @@ void main(){
 </script>
 <script>
 const params = new URLSearchParams(location.search);
-const id = params.get('f') || 'arrival-distant';
-const C = [0.0, 0.03], R = 0.185;
+const id = params.get('f') || 'arrival';
+const C = [0.0, 0.03], R = 0.185, GROW = 1.15; // the snapped circle is always a little bigger than the stroke
 
 function handStroke(sweepDeg) {
   const pts = [], n = 90, a0 = 2.0;
@@ -285,24 +236,19 @@ function handStroke(sweepDeg) {
   return pts;
 }
 
-const base = { comp: 0, ui: 1, zoom: 1, pan: [0, 0], ringC: C, ringR: R, ringI: 0, ringW: 0.12, thin: 0, guide: 0, prism: 0,
+const base = { comp: 0, ringCA: 0, zoom: 1, pan: [0, 0], ringC: C, ringR: R, ringI: 0, ringW: 0.12, thin: 0, guide: 0, prism: 0,
   lens: 0, warp: 0, ca: 0, hole: 0, swell: 0, pull: 0, trail: null, trailA: 1, starFade: 1,
   prompt: 'Draw a circle.', sub: '', hud: true, dest: null };
 
 const frames = {
-  'blank':            { ui: 0, prompt: '', hud: false, starFade: 0, comp: 2 },
-  'arrival-distant':  {},
-  'arrival-limb':     { comp: 1 },
-  'arrival-plain':    { ui: 0 },
-  'debris-detail':    { ui: 2, comp: 2, hud: false },
-  'drawing':          { trail: handStroke(255), prompt: '' },
-  'fail':             { trail: handStroke(215), trailA: 0.32, guide: 0.5, prompt: 'Close the loop.', sub: 'Or just come in →' },
-  'snap':             { thin: 1, prompt: '' },
-  'ignition-soft':    { ringI: 1.12, ringW: 0.16, lens: 0.75, pull: 1, prompt: '', hud: false },
-  'ignition-prism':   { ringI: 1.12, ringW: 0.07, prism: 1, lens: 0.75, pull: 1, prompt: '', hud: false },
-  'opening-early':    { ringI: 1.25, ringR: 0.335, ringW: 0.10, lens: 0.55, warp: 0.35, ca: 0.006, hole: 0.335, starFade: 0.75, hud: false, dest: { scale: 1.3, blur: 9 } },
-  'opening-late':     { ringI: 1.35, ringR: 0.80, ringW: 0.05, lens: 0.3, warp: 1.0, ca: 0.016, hole: 0.80, swell: 0.55, starFade: 0.3, hud: false, dest: { scale: 1.1, blur: 3.5 } },
-  'destination':      { hud: false, dest: { scale: 1, blur: 0 }, canvasOff: true },
+  'arrival':        {},
+  'drawing':        { trail: handStroke(255), prompt: '' },
+  'fail':           { trail: handStroke(215), trailA: 0.32, guide: 0.5, prompt: 'Close the loop.', sub: 'Or just come in \u2192' },
+  'snap':           { trail: handStroke(352), trailA: 0.22, thin: 1, ringR: R * GROW, prompt: '' },
+  'ignition':       { ringI: 1.12, ringR: R * GROW, ringW: 0.16, ringCA: 0.016, ca: 0.004, lens: 0.75, pull: 1, prompt: '', hud: false },
+  'opening-early':  { ringI: 1.25, ringR: 0.335, ringW: 0.10, ringCA: 0.008, lens: 0.55, warp: 0.35, ca: 0.006, hole: 0.335, starFade: 0.75, hud: false, dest: { scale: 1.3, blur: 9 } },
+  'opening-late':   { ringI: 1.35, ringR: 0.80, ringW: 0.05, lens: 0.3, warp: 1.0, ca: 0.016, hole: 0.80, swell: 0.55, starFade: 0.3, hud: false, dest: { scale: 1.1, blur: 3.5 } },
+  'destination':    { hud: false, dest: { scale: 1, blur: 0 }, canvasOff: true },
 };
 const F = Object.assign({}, base, frames[id]);
 
@@ -331,7 +277,7 @@ gl.enableVertexAttribArray(0); gl.bindAttribLocation(pr, 0, 'a'); gl.vertexAttri
 const U = (n) => gl.getUniformLocation(pr, n);
 gl.uniform2f(U('uRes'), cv.width, cv.height); gl.uniform1f(U('uT'), 4.0);
 gl.uniform2f(U('uRingC'), F.ringC[0], F.ringC[1]);
-for (const [u, k] of [['uRingR','ringR'],['uRingI','ringI'],['uRingW','ringW'],['uThin','thin'],['uGuide','guide'],['uPrism','prism'],['uLens','lens'],['uWarp','warp'],['uCA','ca'],['uHole','hole'],['uSwell','swell'],['uPull','pull'],['uUI','ui'],['uZoom','zoom'],['uTrailA','trailA'],['uStarFade','starFade']]) gl.uniform1f(U(u), F[k]);
+for (const [u, k] of [['uRingR','ringR'],['uRingI','ringI'],['uRingW','ringW'],['uThin','thin'],['uGuide','guide'],['uPrism','prism'],['uLens','lens'],['uWarp','warp'],['uCA','ca'],['uHole','hole'],['uSwell','swell'],['uPull','pull'],['uRingCA','ringCA'],['uZoom','zoom'],['uTrailA','trailA'],['uStarFade','starFade']]) gl.uniform1f(U(u), F[k]);
 gl.uniform2f(U('uPan'), F.pan[0], F.pan[1]); gl.uniform1i(U('uComp'), F.comp);
 const tr = F.trail || []; gl.uniform1i(U('uTrailN'), tr.length);
 if (tr.length) gl.uniform2fv(U('uTrail[0]'), new Float32Array(tr.flat()));

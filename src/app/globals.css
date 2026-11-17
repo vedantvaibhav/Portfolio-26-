@@ -26,7 +26,8 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-plex-mono);
+  --font-display: var(--font-newsreader);
   --ease-out-expo: var(--ease-out-expo);
   --ease-in-out-quart: var(--ease-in-out-quart);
 }
@@ -58,4 +59,23 @@ body {
   to {
     visibility: visible;
   }
+}
+
+/*
+  The Portal cover sits above the whole page. It only exists when scripting is
+  on, so a visitor without JavaScript lands straight on the site.
+*/
+.portal-cover {
+  display: none;
+}
+
+@media (scripting: enabled) {
+  .portal-cover {
+    display: block;
+  }
+}
+
+.portal-blob {
+  position: absolute;
+  border-radius: 50%;
 }
