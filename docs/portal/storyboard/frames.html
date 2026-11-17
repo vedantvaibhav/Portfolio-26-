@@ -48,7 +48,7 @@ out vec4 o;
 uniform vec2 uRes; uniform float uT;
 uniform vec2 uRingC; uniform float uRingR, uRingI, uRingW, uThin, uGuide, uPrism;
 uniform float uLens, uWarp, uCA, uHole, uSwell, uPull, uZoom, uRingCA, uTrailA, uStarFade;
-uniform vec2 uPan; uniform int uComp, uTrailN; uniform vec2 uTrail[96];
+uniform vec2 uPan; uniform int uComp, uTrailN, uPlanet; uniform vec2 uTrail[96];
 const float PI = 3.14159265, TAU = 6.2831853;
 
 float h21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
@@ -118,8 +118,11 @@ vec3 background(vec2 p){
   col+=st*uStarFade*0.82;
   vec3 L=normalize(vec3(-0.72,0.38,0.42));
   if(uComp==0){
-    planet(col,p,vec2(0.56,0.23),0.060,L,vec3(0.085,0.105,0.18),vec3(0.25,0.21,0.21),2.0,vec3(0.34,0.47,0.80));
-    planet(col,p,vec2(-0.60,-0.17),0.014,L,vec3(0.20,0.16,0.15),vec3(0.42,0.34,0.28),5.0,vec3(0.70,0.48,0.36));
+    vec3 pa=vec3(0.15,0.095,0.085), pb=vec3(0.36,0.235,0.19), pr=vec3(0.80,0.50,0.38);            // dusk: clay and coral
+    if(uPlanet==1){ pa=vec3(0.105,0.105,0.10); pb=vec3(0.27,0.26,0.24); pr=vec3(0.62,0.60,0.56); }  // bone: no hue at all
+    if(uPlanet==2){ pa=vec3(0.13,0.085,0.03); pb=vec3(0.37,0.26,0.085); pr=vec3(0.82,0.57,0.15); }  // marigold: ochre
+    planet(col,p,vec2(0.56,0.23),0.060,L,pa,pb,2.0,pr);
+    planet(col,p,vec2(-0.60,-0.17),0.014,L,vec3(0.15,0.15,0.145),vec3(0.33,0.32,0.30),5.0,vec3(0.55,0.54,0.52));
   } else if(uComp==1){
     planet(col,p,vec2(0.70,-1.02),0.86,L,vec3(0.11,0.14,0.24),vec3(0.34,0.28,0.29),2.0,vec3(0.45,0.62,1.0));
     planet(col,p,vec2(-0.52,0.27),0.034,L,vec3(0.30,0.24,0.22),vec3(0.62,0.50,0.40),5.0,vec3(0.95,0.66,0.50));
@@ -166,6 +169,29 @@ float streaks(vec2 p, float na, float seed, float amount, float rMin, float rSpa
   return m*exp(-wA*wA/(wd*wd))*(0.25+0.9*h);
 }
 
+vec3 pullDust(vec2 p){
+  vec2 q=p-uRingC; vec3 acc=vec3(0.);
+  for(int l=0;l<2;l++){
+    float sc=l==0?26.:44., fl=float(l)*31.7;
+    vec2 id=floor(q*sc);
+    for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+      vec2 c=id+vec2(x,y); float h=h21(c+fl);
+      if(h>0.20) continue;
+      vec2 pos=(c+h22(c*1.3+fl))/sc; float pr=length(pos);
+      float fall=smoothstep(uRingR*3.3,uRingR*1.3,pr)*smoothstep(uRingR*1.03,uRingR*1.2,pr);
+      if(fall<=0.) continue;
+      vec2 k=h22(c+9.+fl), k2=h22(c+17.+fl);
+      vec2 dir=rot2(0.38+0.9*(k.x-0.5))*(-pos/pr);          // inward, with a shared swirl and its own drift
+      float len=(0.002+0.030*k.y*k.y)*fall*fall*uPull*26./sc; // most are specks, a few have tails, longer near the ring
+      vec2 d=q-pos; float t=clamp(dot(d,-dir)/max(len,1e-4),0.,1.);
+      float dist=length(d+dir*len*t);
+      float w=(0.0006+0.0013*k2.x*k2.x)*(1.-0.6*t);
+      acc+=mix(vec3(0.74,0.82,1.0),vec3(1.0,0.86,0.72),k2.y)*exp(-dist*dist/(w*w))*(0.15+3.0*h)*(1.-t)*fall*1.0;
+    }
+  }
+  return acc;
+}
+
 vec3 trail(vec2 p){
   if(uTrailN<2) return vec3(0.);
   float best=1e9, bt=0.;
@@ -190,7 +216,7 @@ vec4 scene(vec2 p){
     pl=uRingC+q*(1.-uLens*(0.30*m+0.46*edge)); }
   vec3 col=background(pl);
   col*=1.-0.30*uLens*smoothstep(uRingR,uRingR*0.5,r);
-  if(uPull>0.) col+=vec3(0.8,0.86,1.0)*0.8*smoothstep(uRingR*2.7,uRingR*1.15,r)*(streaks(p,150.,3.,uPull,uRingR*1.16,uRingR*1.1,0.07,0.20)+streaks(p,90.,21.,uPull,uRingR*1.12,uRingR*0.6,0.045,0.22));
+  if(uPull>0.) col+=pullDust(p);
   if(uWarp>0.) col+=vec3(0.82,0.88,1.0)*(streaks(p,320.,31.,uWarp,0.05,1.2,0.75,0.5)+streaks(p,520.,47.,uWarp,0.1,1.3,0.55,0.45)*0.8+streaks(p,190.,57.,uWarp,0.02,0.9,1.1,0.5)*1.2);
   float a=1.;
   if(uHole>0.) a=smoothstep(uHole*0.84,uHole*0.97,r);
@@ -226,6 +252,13 @@ const params = new URLSearchParams(location.search);
 const id = params.get('f') || 'arrival';
 const C = [0.0, 0.03], R = 0.185, GROW = 1.15; // the snapped circle is always a little bigger than the stroke
 
+const PICK = Number(params.get('planet') ?? 1);
+function zigzag() { // not a circle: a quick Z
+  const k = [[-0.17, 0.15], [0.16, 0.17], [-0.15, -0.10], [0.19, -0.12]], pts = [];
+  for (let s = 0; s < 3; s++) for (let i = 0; i < 30; i++) { const t = i / 30;
+    pts.push([k[s][0] + (k[s + 1][0] - k[s][0]) * t + 0.006 * Math.sin(t * 9 + s), k[s][1] + (k[s + 1][1] - k[s][1]) * t + 0.03 + 0.008 * Math.sin(t * 7)]); }
+  return pts;
+}
 function handStroke(sweepDeg) {
   const pts = [], n = 90, a0 = 2.0;
   for (let i = 0; i < n; i++) {
@@ -236,14 +269,18 @@ function handStroke(sweepDeg) {
   return pts;
 }
 
-const base = { comp: 0, ringCA: 0, zoom: 1, pan: [0, 0], ringC: C, ringR: R, ringI: 0, ringW: 0.12, thin: 0, guide: 0, prism: 0,
+const base = { comp: 0, planet: PICK, ringCA: 0, zoom: 1, pan: [0, 0], ringC: C, ringR: R, ringI: 0, ringW: 0.12, thin: 0, guide: 0, prism: 0,
   lens: 0, warp: 0, ca: 0, hole: 0, swell: 0, pull: 0, trail: null, trailA: 1, starFade: 1,
   prompt: 'Draw a circle.', sub: '', hud: true, dest: null };
 
 const frames = {
   'arrival':        {},
   'drawing':        { trail: handStroke(255), prompt: '' },
-  'fail':           { trail: handStroke(215), trailA: 0.32, guide: 0.5, prompt: 'Close the loop.', sub: 'Or just come in \u2192' },
+  'fail-open':      { trail: handStroke(215), trailA: 0.32, prompt: 'Close the loop.' },
+  'fail-shape':     { trail: zigzag(), trailA: 0.32, guide: 0.5, prompt: 'Draw a circle.' },
+  'planet-dusk':    { planet: 0, zoom: 3.6, pan: [0.50, 0.215], hud: false },
+  'planet-bone':    { planet: 1, zoom: 3.6, pan: [0.50, 0.215], hud: false },
+  'planet-marigold':{ planet: 2, zoom: 3.6, pan: [0.50, 0.215], hud: false },
   'snap':           { trail: handStroke(352), trailA: 0.22, thin: 1, ringR: R * GROW, prompt: '' },
   'ignition':       { ringI: 1.12, ringR: R * GROW, ringW: 0.16, ringCA: 0.016, ca: 0.004, lens: 0.75, pull: 1, prompt: '', hud: false },
   'opening-early':  { ringI: 1.25, ringR: 0.335, ringW: 0.10, ringCA: 0.008, lens: 0.55, warp: 0.35, ca: 0.006, hole: 0.335, starFade: 0.75, hud: false, dest: { scale: 1.3, blur: 9 } },
@@ -278,7 +315,7 @@ const U = (n) => gl.getUniformLocation(pr, n);
 gl.uniform2f(U('uRes'), cv.width, cv.height); gl.uniform1f(U('uT'), 4.0);
 gl.uniform2f(U('uRingC'), F.ringC[0], F.ringC[1]);
 for (const [u, k] of [['uRingR','ringR'],['uRingI','ringI'],['uRingW','ringW'],['uThin','thin'],['uGuide','guide'],['uPrism','prism'],['uLens','lens'],['uWarp','warp'],['uCA','ca'],['uHole','hole'],['uSwell','swell'],['uPull','pull'],['uRingCA','ringCA'],['uZoom','zoom'],['uTrailA','trailA'],['uStarFade','starFade']]) gl.uniform1f(U(u), F[k]);
-gl.uniform2f(U('uPan'), F.pan[0], F.pan[1]); gl.uniform1i(U('uComp'), F.comp);
+gl.uniform2f(U('uPan'), F.pan[0], F.pan[1]); gl.uniform1i(U('uComp'), F.comp); gl.uniform1i(U('uPlanet'), F.planet);
 const tr = F.trail || []; gl.uniform1i(U('uTrailN'), tr.length);
 if (tr.length) gl.uniform2fv(U('uTrail[0]'), new Float32Array(tr.flat()));
 gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);

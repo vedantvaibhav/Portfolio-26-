@@ -56,6 +56,8 @@
   figcaption { margin-top: 8px; font: 400 12.5px/1.5 var(--mono); color: var(--dim); letter-spacing: 0.02em; }
   .pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
   @media (min-width: 860px) { .pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .trio { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  @media (min-width: 860px) { .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .pick { color: var(--marigold); }
   .decision { display: flex; flex-direction: column; gap: 16px; padding-top: 28px; border-top: 1px solid var(--line); }
   .plain { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -66,7 +68,7 @@
   <header>
     <p class="mono">vedantvaibhav.com · the entry · for approval</p>
     <h1>Draw a circle. The site opens from it.</h1>
-    <p>Version 2. Six beats, eight frames, with your five changes applied. The list of what changed is under the sequence.</p>
+    <p>Version 3. Six beats, nine frames, and one choice left for you: the planet. The list of what changed is under the sequence.</p>
     <p class="note">These are concept stills. I rendered them with a throwaway shader so every frame is something WebGL can really do, but none of this is the build. The planets stand in for Blender models. The bloom is faked. The destination is the placeholder from your 2D prototype.</p>
   </header>
 
@@ -127,27 +129,31 @@
     </div>
 
     <div class="beat">
-      <figure><img src="frames/fail.jpg" width="2400" height="1350" alt="A stroke that did not close is dissolving. A faint dotted guide ring shows where to trace. The prompt reads Close the loop, with a small link under it reading Or just come in." loading="lazy"><figcaption>This frame shows the guide ring (after 2 misses) and the way in (after 3) together.</figcaption></figure>
+      <div class="pair">
+        <figure><img src="frames/fail-shape.jpg" width="2400" height="1350" alt="A stroke shaped like the letter Z is dissolving. A faint dotted ring shows where to trace. The prompt reads Draw a circle." loading="lazy"><figcaption>Not a circle. The dotted ring appears after 2 misses.</figcaption></figure>
+        <figure><img src="frames/fail-open.jpg" width="2400" height="1350" alt="A stroke that covers a little more than half a circle is dissolving. The prompt reads Close the loop." loading="lazy"><figcaption>A circle that stopped short.</figcaption></figure>
+      </div>
       <div class="slate">
         <div class="head"><p class="mono">Beat 3, the other way</p><h3>When it isn't a circle</h3></div>
         <ul>
+          <li>The check is generous. Anything remotely like a circle passes: ovals, wobbly loops, small ones, loops that overshoot or stop a little short.</li>
+          <li>Two messages only. Some other shape gets "Draw a circle." A circle that stopped well short gets "Close the loop."</li>
           <li>No red, no shake. The trail dissolves and the prompt changes.</li>
-          <li>"Close the loop." "Bigger." "Rounder."</li>
           <li>After 2 misses a dotted ring appears to trace.</li>
-          <li>After 3, "Or just come in →".</li>
+          <li>The Enter button in the corner is always there. No extra link.</li>
         </ul>
       </div>
     </div>
 
     <div class="beat">
-      <figure><img src="frames/ignition.jpg" width="2400" height="1350" alt="The circle has become a thick, soft ring of rainbow light, red on the outside and violet on the inside, with a warm glow around it. The colours of the ring are slightly pulled apart, and stars across the frame carry thin red and blue fringes. The space inside the ring is darker and the stars near its edge bend." loading="lazy"></figure>
+      <figure><img src="frames/ignition.jpg" width="2400" height="1350" alt="The circle has become a thick, soft ring of rainbow light, red on the outside and violet on the inside, with a warm glow around it. The colours of the ring are slightly pulled apart, and stars across the frame carry thin red and blue fringes. The space inside the ring is darker and the stars near its edge bend. Fine dust drifts in toward the ring." loading="lazy"></figure>
       <div class="slate">
         <div class="head"><p class="mono">Beat 4 · 240 to 900 ms</p><h3>Ignition</h3></div>
         <ul>
           <li>The circle becomes the ring. Red outside, blue inside, colour sliding slowly around it.</li>
           <li>A little chromatic split as it lights: the ring's colours pull apart slightly and the stars pick up thin red and blue fringes. It eases off as the ring settles.</li>
           <li>The space inside starts to lens. Stars near the edge bend.</li>
-          <li>Dust is pulled toward the ring. The camera pushes in a few percent.</li>
+          <li>Dust is drawn toward the ring on a slight spiral. Most of it is specks, a few have short tails, and they speed up as they get close. The camera pushes in a few percent.</li>
           <li>Sound: a low rumble rising.</li>
           <li>This is the only bright thing on screen. Nothing else glows.</li>
         </ul>
@@ -184,20 +190,31 @@
     </div>
   </section>
 
+  <section aria-labelledby="planet">
+    <h2 id="planet">Pick a planet</h2>
+    <p>The blue is gone. Three replacements, shown close up. In the frames above the planet is small and far away, and it is option B.</p>
+    <div class="trio">
+      <figure><img src="frames/planet-dusk.jpg" width="2400" height="1350" alt="Option A. A planet in dark clay and muted coral with a thin coral rim." loading="lazy"><figcaption>A. Dusk. Clay and coral.</figcaption></figure>
+      <figure><img src="frames/planet-bone.jpg" width="2400" height="1350" alt="Option B. A planet in grey and bone with a thin pale rim and no colour." loading="lazy"><figcaption>B. Bone. No colour at all. <span class="pick">My pick.</span></figcaption></figure>
+      <figure><img src="frames/planet-marigold.jpg" width="2400" height="1350" alt="Option C. A planet in dark ochre with a thin marigold rim." loading="lazy"><figcaption>C. Marigold. Ochre.</figcaption></figure>
+    </div>
+    <p>B keeps the frame colourless until the ring lights, so the ring is the first colour anyone sees. A and C both tie to your brand colours, but each puts a warm spot on screen before the moment that should own it.</p>
+  </section>
+
   <section aria-labelledby="changes">
-    <h2 id="changes">What changed in version 2</h2>
+    <h2 id="changes">What changed in version 3</h2>
     <ul class="plain">
-      <li><strong>Darker space.</strong> The background is close to black now, the haze is about half as strong, and the vignette is deeper.</li>
-      <li><strong>No interface pieces.</strong> The cursor, toggle, bezier handle and button are gone. Only stars, haze, planets and faint dust remain.</li>
-      <li><strong>Planets far away, and darker.</strong> The distant layout stays. Both planets are smaller and dimmer so they sit back.</li>
-      <li><strong>A bigger circle.</strong> The snapped circle is always 15% larger than the stroke.</li>
-      <li><strong>Chromatic split at ignition.</strong> Kept small, as you asked.</li>
+      <li><strong>No blue planet.</strong> Three options above. The small second planet is neutral grey.</li>
+      <li><strong>Simpler messages.</strong> "Draw a circle." and "Close the loop." only. "Bigger.", "Rounder." and "Or just come in" are gone.</li>
+      <li><strong>A generous check.</strong> If it is remotely a circle, the ring starts from it, where it was drawn. A circle that is too small is accepted and grown to a minimum size.</li>
+      <li><strong>Natural dust.</strong> The straight dashes around the ring are now scattered specks on a slight spiral, with a few short tails.</li>
     </ul>
-    <h3>Settled</h3>
+    <h3>Settled earlier</h3>
     <ul class="plain">
-      <li>The soft band ring.</li>
+      <li>Space close to black, no interface pieces, planets small and far.</li>
+      <li>The snapped circle is 15% bigger than the stroke.</li>
+      <li>The soft band ring, with a small chromatic split as it lights.</li>
       <li>The destination from your prototype as the placeholder behind the ring.</li>
-      <li>Sound toggle bottom left, Enter bottom right. White trail with a blue glow. Cool blue planet rim.</li>
     </ul>
   </section>
 
@@ -219,7 +236,7 @@
       <li><strong>Phone portrait.</strong> Every frame here is 16:9. The portrait composition needs its own pass in milestone 1.</li>
       <li><strong>Lensing.</strong> It is subtle in a still. It reads in motion, when stars slide across the ring edge. I'll confirm in milestone 3.</li>
       <li><strong>The swell.</strong> The late opening frame may be too milky. That gets tuned on the timeline, not here.</li>
-      <li><strong>How dark is dark enough.</strong> A still on your screen is the test. If version 2 is still too bright or now too empty, say so and I'll set the build to match.</li>
+      <li><strong>How generous is too generous.</strong> A loose check will sometimes open on a shape that was not meant as a circle. I'll tune it against recorded strokes in milestone 2.</li>
       <li><strong>The headline through the ring.</strong> At 124 px it is the loudest thing in the opening. That depends on the real site, which isn't designed yet.</li>
     </ul>
   </section>

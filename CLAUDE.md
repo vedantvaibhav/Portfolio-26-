@@ -54,7 +54,8 @@ Web games (Tetris, Auto Rush, Yolk of Truth), Nami, and any "changelog" framing.
 The first screen is a WebGL entry ritual: draw a circle, it becomes a ring of light, the site opens through it. The spec is `docs/portal/handoff.md`. Work in its milestones and stop for Vedant's review after each one.
 
 - Storyboard: `docs/portal/storyboard/` (published at https://claude.ai/artifact/84tisomSshYJXEBg4GsW9R). `frames.html` is a throwaway concept shader, not the production scene. Re-render with `NODE_PATH=$(npm root -g) node docs/portal/storyboard/render.mjs`.
-- Storyboard v2 is approved with these calls: space close to black, no interface debris, planets small, far and dim, snapped circle 15% bigger than the stroke, soft band ring with a small chromatic split at ignition.
+- Storyboard is approved with these calls: space close to black, no interface debris, planets small, far and dim, snapped circle 15% bigger than the stroke, soft band ring with a small chromatic split at ignition.
+- Later calls from Vedant: no blue planet (colour still to be picked from dusk, bone or marigold). Only two fail messages, "Draw a circle." for a wrong shape and "Close the loop." for an open one; no "Bigger.", "Rounder." or "Or just come in". The circle check is generous, and the ring starts where the stroke was drawn. Dust pulled toward the ring is scattered specks on a slight spiral, not straight radial dashes.
 - Milestone 0 (setup) is built. Code lives in `src/portal/` and `src/components/portal/`. Every tunable goes in `src/portal/config.ts`; the `?debug` panel is generated from it.
 - Check a milestone with `pnpm portal:shots <label>` against a running dev server. Headless FPS is software rendered, so it is a smoke test only.
 - Brand colours: indigo `#33416b`, marigold `#e9a321`, coral `#f1a98c`. Type: IBM Plex Mono for the prompt, Newsreader italic for the destination headline.

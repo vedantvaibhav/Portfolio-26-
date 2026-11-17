@@ -7,7 +7,7 @@ import path from 'node:path';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const here = path.dirname(fileURLToPath(import.meta.url));
-const all = ['arrival', 'drawing', 'fail', 'snap', 'ignition', 'opening-early', 'opening-late', 'destination'];
+const all = ['arrival', 'drawing', 'fail-open', 'fail-shape', 'snap', 'ignition', 'opening-early', 'opening-late', 'destination', 'planet-dusk', 'planet-bone', 'planet-marigold'];
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : all;
 
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });

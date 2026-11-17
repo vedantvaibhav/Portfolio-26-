@@ -25,15 +25,17 @@ export const portalConfig = {
     delayMs: 1200,
   },
   recognition: {
+    // Generous on purpose: anything remotely like a circle passes.
     resamplePx: 6,
-    maxRoundness: 0.38,
-    minSweepRad: 5.0,
-    closeGapFactor: 0.9,
-    fullSweepRad: 6.0,
-    minRadiusPx: 40,
-    minRadiusViewport: 0.06,
+    maxRoundness: 0.5,
+    minSweepRad: 4.4,
+    closeGapFactor: 1.3,
+    fullSweepRad: 5.6,
+    // A stroke smaller than this is noise, not a circle.
+    minRadiusPx: 14,
+    // Small circles are accepted and grown to at least this share of the short side.
+    minRingRadiusViewport: 0.09,
     guideAfterFails: 2,
-    skipLinkAfterFails: 3,
   },
   snap: {
     ms: 240,
