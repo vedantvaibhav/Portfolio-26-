@@ -17,8 +17,9 @@ void mainUv(inout vec2 uv) {
     vec2 scale = vec2(aspect, 1.);
     vec2 q = (uv-0.5)*scale - center;
     float r = length(q);
-    float inside = smoothstep(radius*1.25, radius*0.8, r);
-    float rim = exp(-pow((r-radius)/(0.24*radius), 2.));
+    float inside = (1.-smoothstep(radius*0.8, radius*1.25, r));
+    float off = (r-radius)/(0.24*radius);
+    float rim = exp(-off*off);
     q *= 1. - strength*(0.30*inside + 0.46*rim);
     uv = (q + center)/scale + 0.5;
   }
@@ -76,7 +77,7 @@ vec3 lRing(vec2 q){
   float film = 0.15*sin(angle*2.+clock*0.6+n1*4.)+0.10*(n2-0.5);   // colour slides around the ring
   vec3 hue = lSpectrum(clamp(0.5+0.36*x+film, 0., 1.));
   hue = mix(hue, vec3(dot(hue, vec3(0.333))), 0.22);       // soft, not neon
-  hue.b += 0.35*smoothstep(0.2, -1.2, x);                  // lift the violet edge, which the eye reads as dark
+  hue.b += 0.35*(1.-smoothstep(-1.2, 0.2, x));                  // lift the violet edge, which the eye reads as dark
   vec3 col = hue*exp(-x*x*0.9)*1.05;
   col += vec3(1.0, 0.97, 0.92)*exp(-x*x*14.)*0.55;         // a pale hot core
   vec3 tint = mix(vec3(0.42, 0.55, 1.0), vec3(1.0, 0.56, 0.42), smoothstep(-2.5, 2.5, x));
@@ -109,7 +110,7 @@ vec3 lDust(vec2 q){
     float t = clamp(dot(d, -heading)/max(tail, 1e-4), 0., 1.);
     float dist = length(d+heading*tail*t);
     float size = (0.0006+0.0013*h2*h2)*(1.-0.6*t);
-    float life = smoothstep(0., 0.12, u)*smoothstep(1., 0.9, u);
+    float life = smoothstep(0., 0.12, u)*(1.-smoothstep(0.9, 1., u));
     acc += vec3(0.9)*exp(-dist*dist/(size*size))*(0.45+2.2*h3)*(1.-t)*life;
   }
   return acc*pull;
@@ -122,7 +123,7 @@ float lStreaks(vec2 q, float lanes, float seed, float rMin, float rSpan, float l
   float r0 = rMin+rSpan*lh21(vec2(lane, seed+7.));
   float len = (0.02+lengthK*lh21(vec2(lane, seed+11.)))*warp*(0.4+r0);
   float along = (r-r0)/max(len, 1e-4);
-  float m = step(0., along)*step(along, 1.)*pow(1.-along, 0.6)*smoothstep(0., 0.08, along);
+  float m = step(0., along)*step(along, 1.)*pow(clamp(1.-along, 0., 1.), 0.6)*smoothstep(0., 0.08, along);
   float arc = across*r*L_TAU/lanes; float width = 0.0007+0.0009*h;
   return m*exp(-arc*arc/(width*width))*(0.25+0.9*h);
 }
@@ -133,7 +134,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec2 p = (gl_FragCoord.xy-0.5*bufferSize)/bufferSize.y;
   vec2 q = p-center; float r = length(q);
   vec3 col = inputColor.rgb;
-  col *= 1.-0.30*lens*smoothstep(radius, radius*0.5, r);    // the inside of the ring goes darker
+  col *= 1.-0.30*lens*(1.-smoothstep(radius*0.5, radius, r));    // the inside of the ring goes darker
 
   vec3 light = vec3(0.);
   if (ringI > 0.) {
@@ -147,13 +148,15 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   }
   if (guide > 0.) {
     float d = abs(length(p)-guideRadius);
-    float dash = smoothstep(0.25, 0.15, abs(fract(atan(p.y, p.x)/L_TAU*72.+clock*0.01)-0.5));
+    float dash = (1.-smoothstep(0.15, 0.25, abs(fract(atan(p.y, p.x)/L_TAU*72.+clock*0.01)-0.5)));
     light += vec3(0.85)*exp(-d*d/(0.0011*0.0011))*dash*guide;
   }
   if (pull > 0.) light += lDust(q);
   if (warp > 0.) light += vec3(0.9)*(lStreaks(q, 320., 31., 0.05, 1.2, 0.75, 0.5) + lStreaks(q, 520., 47., 0.1, 1.3, 0.55, 0.45)*0.8 + lStreaks(q, 190., 57., 0.02, 0.9, 1.1, 0.5)*1.2);
   if (swell > 0.) light += vec3(1.0, 0.93, 0.86)*swell*(0.10+0.34*smoothstep(0.25, 1.0, length(p*vec2(0.95, 1.3))));
 
+  // Never let a bad value through: the bloom would smear it across the whole frame.
+  if (!(light.r >= 0. && light.g >= 0. && light.b >= 0.)) light = vec3(0.);
   outputColor = vec4(col + lLinear(light), inputColor.a);
 }
 `;

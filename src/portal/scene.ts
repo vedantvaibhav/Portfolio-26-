@@ -38,6 +38,8 @@ export type FrameStats = {
 export type Phase = "idle" | "drawing" | "fail" | "snap" | "ignition" | "opening" | "done";
 export type Miss = "open" | "shape";
 
+/** Shares of the point cloud to draw, from full quality down. */
+const SHARES = [1, 0.66, 0.44, 0.28];
 /** Radius of the guide ring and of the keyboard circle, as a share of the short side. */
 const DEFAULT_RADIUS = 0.17;
 
@@ -96,6 +98,11 @@ export class PortalScene {
   private timeline: gsap.core.Timeline | null = null;
   private failTween: gsap.core.Tween | null = null;
   private fails = 0;
+  /** Which step of SHARES is in use, and how long the frame time has sat on either side of the limits. */
+  private tier = 0;
+  private slowFor = 0;
+  private fastFor = 0;
+  private settle = 3;
   private strokeSteps = 0;
   /** Where the ring ignites, in CSS pixels. */
   private ring = { x: 0, y: 0, r: 1 };
@@ -326,7 +333,7 @@ export class PortalScene {
     this.stars.update(t, fx.stars);
     // The pull of the ring speeds the whole disc up.
     const hole = this.config.wormhole;
-    this.wormhole.update(dt * this.motion, hole.flow * (1 + (fx.pull + fx.warp * 2) * hole.pullBoost), fx.stars);
+    this.wormhole.update(dt * this.motion, dt, hole.flow * (1 + (fx.pull + fx.warp * 2) * hole.pullBoost), fx.stars);
 
     this.trail.morph = fx.morph;
     this.trail.update(dt, fx.trail, this.phase === "drawing");
@@ -439,6 +446,7 @@ export class PortalScene {
     this.frameMs += (dtMs - this.frameMs) * 0.05;
 
     this.update(dtMs / 1000, this.elapsed);
+    this.adapt(dtMs / 1000);
     this.renderer.info.reset();
     this.composer.render(dtMs / 1000);
 
@@ -454,6 +462,29 @@ export class PortalScene {
       dpr: this.renderer.getPixelRatio(),
     });
   };
+
+  /**
+   * Hold the frame rate. If frames run long for a while, draw a smaller share
+   * of the point cloud; if they run short, draw more. Only the density
+   * changes. The experience is the same on every device.
+   */
+  private adapt(dt: number) {
+    const { stepDownMs, stepUpMs, cooldownMs } = this.config.quality;
+    this.settle -= dt;
+    this.slowFor = this.frameMs > stepDownMs ? this.slowFor + dt : 0;
+    this.fastFor = this.frameMs < stepUpMs ? this.fastFor + dt : 0;
+    // Leave it alone while it settles, and once the ring has taken over.
+    if (this.settle > 0 || (this.phase !== "idle" && this.phase !== "drawing" && this.phase !== "fail")) return;
+
+    let next = this.tier;
+    if (this.slowFor > 0.6 && this.tier < SHARES.length - 1) next++;
+    else if (this.fastFor > 4 && this.tier > 0) next--;
+    if (next === this.tier) return;
+    this.tier = next;
+    this.wormhole.setShare(SHARES[next]);
+    this.settle = cooldownMs / 1000;
+    this.slowFor = this.fastFor = 0;
+  }
 
   private onVisibility = () => {
     // Skip the long gap after a hidden tab so it does not count as a slow frame.

@@ -52,6 +52,9 @@ for (const { name, circle, ...options } of viewports) {
   const shot = (file) => page.screenshot({ path: path.join(out, `${name}-${file}.jpg`), type: "jpeg", quality: 90 });
 
   await page.goto(`${base}/?debug`, { waitUntil: "networkidle" });
+  // Software rendering is slow. Stop the scene from thinning the cloud to make up for it.
+  await page.waitForFunction(() => window.__portal);
+  await page.evaluate(() => (window.__portal.config.quality.stepDownMs = 1e9));
   await page.locator("canvas[data-ready]").waitFor({ timeout: 240000 });
   await page.waitForTimeout(9000);
   const reading = (await page.locator("[data-portal-fps]").innerText()).replace(/\s+/g, " ");

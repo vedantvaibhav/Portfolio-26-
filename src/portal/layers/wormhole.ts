@@ -12,6 +12,7 @@ import {
 } from "three";
 import type { PortalConfig } from "../config";
 import { NOISE, PRECISION } from "../glsl";
+import { requestCloud } from "./wormhole-cloud";
 
 /** The sheet starts this far down the throat, as a share of the hole's radius. Below that it is lost in the dark. */
 const THROAT = 0.6;
@@ -19,48 +20,31 @@ const THROAT = 0.6;
 const BEND = 2.2;
 
 /**
- * A point cloud, in the manner of a scanned landscape: about a million tiny
- * points, all nearly the same brightness. The picture is made by how many of
- * them land in each place. Where they crowd, at the lip of the hole, they add
- * up to white. Where they thin out you see single grains.
+ * A point cloud, in the manner of a scanned landscape: hundreds of thousands
+ * of tiny points, all nearly the same brightness. The picture is made by how
+ * many of them land in each place. Where they crowd, at the lip of the hole,
+ * they add up to white. Where they thin out you see single grains.
  *
- * Nothing is stored per point. Each one derives everything from its index:
- * which spiral it falls along, how far along it started, how far it sits off
- * the sheet. The flow lines and dunes are a density pattern laid over those
- * coordinates, and points that fall in the gaps are simply not drawn.
+ * The cloud is built once (see wormhole-cloud.ts). Each frame the shader only
+ * moves every point a little further along its spiral.
  */
 const VERTEX = /* glsl */ `
+attribute vec4 aLook;      // vary, dunes, glint, kind
 uniform float uClock, uSpan, uInner, uOuterX, uSwirl, uWell, uThickness, uSize;
-uniform float uPixelsPerUnit, uPixelRatio, uBrightAngle, uGain, uFade;
+uniform float uPixelsPerUnit, uPixelRatio, uBrightAngle, uGain;
 varying float vLight;
 const float TAU = 6.2831853;
 
-uint pcg(uint v){ uint s = v*747796405u+2891336453u; uint w = ((s >> ((s >> 28u)+4u)) ^ s)*277803737u; return (w >> 22u) ^ w; }
-float rnd(uint n){ return float(pcg(n))*(1./4294967296.); }
-
-// Value noise that repeats every "period" cells in x, so the pattern joins up around the hole.
-float cell(vec2 i, float period){ i.x = mod(i.x, period); return fract(sin(dot(i, vec2(127.1, 311.7)))*43758.5453); }
-float pnoise(vec2 p, float period){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
-  return mix(mix(cell(i, period), cell(i+vec2(1, 0), period), f.x), mix(cell(i+vec2(0, 1), period), cell(i+vec2(1, 1), period), f.x), f.y); }
-float pfbm(vec2 p, float period){ float a = .5, s = 0.; for (int i=0; i<4; i++) { s += a*pnoise(p, period); p *= 2.; period *= 2.; p.y += 17.3; a *= .5; } return s; }
-
 void main(){
-  uint id = uint(gl_VertexID)*9u;
-  float pop = rnd(id), start = rnd(id+1u), turn = rnd(id+2u), keep = rnd(id+5u), vary = rnd(id+6u);
-  float gauss = sqrt(-2.*log(max(rnd(id+3u), 1e-6)))*cos(TAU*rnd(id+4u));
-  bool spray = pop > 0.94;                              // a few fly loose above the sheet
-
-  // Where the matter is. Long streaks along the flow, slow dunes across it, and a fine hair of lines.
-  float lines = pfbm(vec2(turn*26., start*4.5), 26.);
-  float dunes = pfbm(vec2(turn*3., start*7.+5.), 3.);
-  float hair = pnoise(vec2(turn*230., start*2.2), 230.);
-  float density = (0.04+0.96*smoothstep(0.34, 0.62, lines*0.6+dunes*0.4))*(0.30+1.4*hair);
-  if (!spray && keep > density) { gl_Position = vec4(2., 2., 2., 1.); gl_PointSize = 0.; vLight = 0.; return; }
+  float start = position.x, turn = position.y, gauss = (position.z-0.5)*6.;
+  float vary = aLook.x, dunes = aLook.y, glint = aLook.z;
+  bool spray = aLook.w > 0.75;                           // a few fly loose above the sheet
+  bool crowd = aLook.w > 0.25 && !spray;                 // half gather toward the hole
 
   // The fall. k runs evenly from 1 at the outer rim to 0 deep in the throat and wraps.
   // Bending it with a power sets where points gather, and makes them plunge at the end.
   float k = fract(start - uClock*(1.+0.05*(vary-0.5)));
-  float x = ${THROAT.toFixed(2)}*exp(uSpan*pow(k, pop < 0.5 ? 1.6 : 0.85));   // radius, in hole radii
+  float x = ${THROAT.toFixed(2)}*exp(uSpan*pow(max(k, 1e-6), crowd ? 1.6 : 0.85));   // radius, in hole radii
   float r = uInner*x;
   float theta = TAU*turn + uSwirl*pow(1./x, 1.5);        // the spiral winds tighter near the hole
 
@@ -79,14 +63,14 @@ void main(){
   gl_PointSize = min(size, 20.*uPixelRatio);
 
   // The light comes from the hole. Hottest where the sheet rolls over the lip, gone down the throat.
-  float lip = exp(-pow((x-1.08)/0.20, 2.));
-  float light = 0.20+1.5*lip+1.0*pow(1./max(x, 1.), 1.35);
-  light *= pow(smoothstep(0.80, 1.03, x), 2.)*smoothstep(uOuterX, 0.55*uOuterX, x);   // the walls of the throat go black fast
-  float side = 0.58+0.42*pow(0.5+0.5*cos(theta-uBrightAngle), 1.5);   // one side burns brighter
-  float ends = smoothstep(0., 0.015, k)*smoothstep(1., 0.93, k);
-  float glint = 0.55+2.6*pow(rnd(id+7u), 12.);            // one in a few hundred catches the light
+  float off = (x-1.08)/0.20;
+  float light = 0.20+1.5*exp(-off*off)+1.0*pow(1./max(x, 1.), 1.35);
+  float walls = smoothstep(0.87, 1.03, x);               // the walls of the throat go black fast
+  light *= walls*walls*(1.-smoothstep(0.55*uOuterX, uOuterX, x));
+  float side = 0.58+0.42*pow(max(0.5+0.5*cos(theta-uBrightAngle), 0.), 1.5);   // one side burns brighter
+  float ends = smoothstep(0., 0.015, k)*(1.-smoothstep(0.93, 1., k));
   float tooNear = smoothstep(2.5, 9., distance);
-  vLight = uGain*light*side*ends*glint*shrink*bokeh*tooNear*uFade*(spray ? 0.55 : 1.);
+  vLight = uGain*light*side*ends*(0.55+2.6*glint)*shrink*bokeh*tooNear*(spray ? 0.55 : 1.);
 }
 `;
 
@@ -96,7 +80,10 @@ varying float vLight;
 ${NOISE}
 void main(){
   float d = length(gl_PointCoord*2.-1.);
-  gl_FragColor = vec4(toLinear(vec3(vLight*smoothstep(1., 0.35, d))), 1.);
+  float light = vLight*(1.-smoothstep(0.35, 1., d));
+  // Never let a bad value through: the bloom would smear it across the whole frame.
+  if (!(light >= 0.)) light = 0.;
+  gl_FragColor = vec4(toLinear(vec3(light)), 1.);
 }
 `;
 
@@ -114,8 +101,14 @@ export class Wormhole {
   private material: ShaderMaterial;
   private black = new MeshBasicMaterial({ color: 0x000000, side: DoubleSide });
   private clock = 0;
-  private builtCount = -1;
+  private gain = 1;
+  /** 0 until the cloud arrives, then it eases to 1. */
+  private reveal = 0;
+  private total = 0;
+  private share = 1;
+  private wanted = -1;
   private builtThroat = "";
+  private disposed = false;
 
   constructor() {
     this.material = new ShaderMaterial({
@@ -137,13 +130,13 @@ export class Wormhole {
         uPixelsPerUnit: { value: 1 },
         uPixelRatio: { value: 1 },
         uBrightAngle: { value: 0 },
-        uGain: { value: 1 },
-        uFade: { value: 1 },
+        uGain: { value: 0 },
       },
     });
     this.points = new Points(new BufferGeometry(), this.material);
     this.points.frustumCulled = false;
     this.points.renderOrder = 2;
+    this.points.visible = false;
 
     // Black walls and a black floor for the throat. They draw first and hide the stars behind the hole.
     this.throat = new Mesh(new BufferGeometry(), this.black);
@@ -165,19 +158,24 @@ export class Wormhole {
     u.uThickness.value = w.thickness;
     u.uSize.value = w.pointSize;
     u.uBrightAngle.value = (w.brightAngle * Math.PI) / 180;
-    u.uGain.value = w.gain;
     this.group.rotation.set((w.elevation * Math.PI) / 180, 0, (w.roll * Math.PI) / 180);
 
     // Phones draw about a third as many points, each a little brighter to keep the same weight.
+    this.gain = coarse ? w.gain * 1.7 : w.gain;
     const count = Math.round(coarse ? w.points * 0.35 : w.points);
-    if (coarse) u.uGain.value = w.gain * 1.7;
-    if (count !== this.builtCount) {
-      const geometry = new BufferGeometry();
-      // Every value comes from the vertex index. Three only needs this attribute to know how many to draw.
-      geometry.setAttribute("position", new BufferAttribute(new Uint8Array(count * 3), 3));
-      this.points.geometry.dispose();
-      this.points.geometry = geometry;
-      this.builtCount = count;
+    if (count !== this.wanted) {
+      this.wanted = count;
+      requestCloud(count).then((cloud) => {
+        if (this.disposed || count !== this.wanted) return;
+        const geometry = new BufferGeometry();
+        geometry.setAttribute("position", new BufferAttribute(cloud.flow, 3, true));
+        geometry.setAttribute("aLook", new BufferAttribute(cloud.look, 4, true));
+        this.points.geometry.dispose();
+        this.points.geometry = geometry;
+        this.points.visible = true;
+        this.total = cloud.count;
+        this.setShare(this.share);
+      });
     }
 
     const throatKey = `${w.innerRadius}:${w.well}`;
@@ -192,14 +190,27 @@ export class Wormhole {
     this.material.uniforms.uPixelRatio.value = pixelRatio;
   }
 
+  /**
+   * Draw only this share of the cloud. The points are in random order, so a
+   * smaller share is the same picture, thinner. Used to hold the frame rate.
+   */
+  setShare(share: number) {
+    this.share = share;
+    this.points.geometry.setDrawRange(0, Math.round(this.total * share));
+  }
+
   /** speed is the share of the journey from rim to hole covered per second. */
-  update(dt: number, speed: number, fade: number) {
+  update(dt: number, realDt: number, speed: number, fade: number) {
     this.clock += dt * speed;
+    if (this.points.visible) this.reveal = Math.min(1, this.reveal + realDt / 1.6);
+    const eased = this.reveal * this.reveal * (3 - 2 * this.reveal);
     this.material.uniforms.uClock.value = this.clock;
-    this.material.uniforms.uFade.value = fade;
+    // Fewer points are each a little brighter, so the picture keeps its weight.
+    this.material.uniforms.uGain.value = (this.gain * fade * eased) / Math.pow(this.share, 0.8);
   }
 
   dispose() {
+    this.disposed = true;
     this.points.geometry.dispose();
     this.throat.geometry.dispose();
     this.floor.geometry.dispose();

@@ -22,9 +22,8 @@ export const portalConfig = {
     twinkle: 0.35,
   },
   wormhole: {
-    // Points in the cloud. About half are drawn; the rest fall in the gaps between flow lines.
-    // Phones use about a third.
-    points: 1400000,
+    // Points in the cloud. Phones use about a third.
+    points: 700000,
     pointSize: 0.055,
     // How far points sit off the sheet, as a share of their distance from the hole.
     thickness: 0.009,
@@ -126,6 +125,8 @@ export const portalConfig = {
     edgeFringe: 0,
   },
   quality: {
+    // If the average frame takes longer than stepDownMs, draw fewer points. If it is
+    // shorter than stepUpMs, draw more again. cooldownMs keeps it from flip flopping.
     stepDownMs: 22,
     stepUpMs: 12,
     cooldownMs: 2000,
