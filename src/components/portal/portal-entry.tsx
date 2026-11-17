@@ -197,6 +197,14 @@ export function PortalEntry() {
             className="portal-canvas absolute inset-0 size-full touch-none"
             data-ready={ready || undefined}
           />
+          {/* [PLACEHOLDER] wording, for Vedant to confirm. The name sits exactly where the
+              site's own nav puts it, so it holds still when the site comes up. */}
+          <div className="pointer-events-none absolute left-0 top-0 px-6 py-5 text-sm md:px-10">
+            <p className="font-medium text-[#efe9dd]">Vedant Vaibhav</p>
+            <p className="mt-1 font-mono text-[12px] tracking-[0.06em] text-[#e8ebf5]/55">
+              Senior Product Designer at ShopOS, Bangalore
+            </p>
+          </div>
           {/* [PLACEHOLDER] wording, for Vedant to confirm. */}
           <p
             className="portal-prompt pointer-events-none absolute inset-x-0 bottom-[9.5svh] isolate text-center font-mono text-[13px] tracking-[0.12em] text-[#e8ebf5]/70"

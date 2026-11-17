@@ -15,9 +15,11 @@ export const portalConfig = {
     innerRadius: 15,
     outerRadius: 85,
     // Where the black of the hole sits: share of the half width and half height from the
-    // centre of the screen. 0 and 0 is dead centre. Then how far away it is.
-    x: 0,
-    y: 0,
+    // centre of the screen. 0 and 0 is dead centre. It sits a touch right and up, because the
+    // disc leans and is heavier at the lower left, which leaves the top right empty otherwise.
+    // Then how far away it is.
+    x: 0.09,
+    y: 0.03,
     depth: 54,
     // How far above the sheet the camera looks from, and how much the horizon leans. Degrees.
     elevation: 24,
@@ -49,7 +51,7 @@ export const portalConfig = {
     // bend: it holds its shape and thins out. A scroll does it at the centre of
     // the hole. A press and hold inside the hole does it wherever the hold is,
     // for as long as it is held; let go early and the grains come back.
-    ms: 4200,
+    ms: 3300,
     // How much of that time one grain's own trip takes. The rest is the spread
     // of when they leave. Smaller means a longer, thinner stream.
     flight: 0.3,
