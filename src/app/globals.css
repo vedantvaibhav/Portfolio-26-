@@ -90,9 +90,14 @@ body {
   opacity: 1;
 }
 
-/* One quiet line. It waits a moment, then fades in. */
+/* One quiet line. It waits a moment, then fades in. It steps back while the hand is down. */
 .portal-prompt {
   opacity: 0.7;
+  transition: opacity 0.4s ease-out;
+}
+
+.portal-prompt[data-hidden] {
+  opacity: 0;
 }
 
 .portal-coarse {
@@ -110,8 +115,17 @@ body {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .portal-prompt {
+  .portal-prompt[data-first] {
     animation: portal-prompt-in 1.2s ease-out var(--portal-prompt-delay, 1.2s) both;
+  }
+
+  /* After a miss the line comes back in, so a change of words is noticed. */
+  .portal-prompt:not([data-first]) {
+    animation: portal-prompt-in 0.6s ease-out both;
+  }
+
+  .portal-prompt[data-hidden] {
+    animation: none;
   }
 }
 

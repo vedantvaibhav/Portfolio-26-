@@ -9,6 +9,7 @@ Vedant Vaibhav's portfolio. The full brief is in `docs/brief.md`. Read it before
 - `pnpm dev` runs the site at localhost:3000
 - `pnpm build` is the check that matters (types and prerender)
 - `pnpm lint`
+- `pnpm test` runs the circle check tests
 
 ## Stack
 
@@ -58,6 +59,8 @@ The first screen is a WebGL entry ritual: draw a circle, it becomes a ring of li
 - Later calls from Vedant: no blue planet (colour still to be picked from dusk, bone or marigold). Only two fail messages, "Draw a circle." for a wrong shape and "Close the loop." for an open one; no "Bigger.", "Rounder." or "Or just come in". The circle check is generous, and the ring starts where the stroke was drawn. Dust pulled toward the ring is scattered specks on a slight spiral, not straight radial dashes.
 - Final calls before the build: planet is dusk (clay and coral) with a slate blue cast, about 20% fewer stars than the storyboard, and nothing on screen but the space and the prompt. No Enter button and no sound toggle. The circle is the way in. An Enter or Space key press and a skip button that only shows on keyboard focus stay as the accessible path. Vedant said "no sound here"; treat sound (milestone 5) as on hold and confirm with him before building it.
 - The storyboard frames still show the older bone planet and the corner labels. The build is the reference now.
+- Milestones 2 to 4 are built as one prototype: light trail, circle check (`src/portal/recognize.ts`, tested with `pnpm test`), snap, ring, lensing, and the opening on one GSAP timeline (`src/portal/ritual.ts`). The page shows through a hole cut by the final pass in `src/portal/effects.ts`. Not yet reviewed by Vedant on a real device.
+- Still to do: sound (on hold), Blender assets, quality tiers, returning visitors, no-WebGL fallback, real device testing, timing polish with Vedant.
 - Milestone 1 (space look-dev) is built: `src/portal/layers/` holds nebula, stars, planet and dust, `src/portal/film.ts` the grain and vignette. Shader colours are authored in display space and converted with `toLinear()`.
 - If styles look stale after a dev server restart, delete `.next` and start it again.
 - Milestone 0 (setup) is built. Code lives in `src/portal/` and `src/components/portal/`. Every tunable goes in `src/portal/config.ts`; the `?debug` panel is generated from it.

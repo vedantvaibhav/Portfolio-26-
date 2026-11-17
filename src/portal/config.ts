@@ -58,11 +58,24 @@ export const portalConfig = {
     minSweepRad: 4.4,
     closeGapFactor: 1.3,
     fullSweepRad: 5.6,
+    // While the hand is still down, wait for a loop this complete before igniting.
+    liveSweepRad: 5.9,
+    // More than about a turn and a half is a spiral.
+    maxSweepRad: 9.5,
     // A stroke smaller than this is noise, not a circle.
     minRadiusPx: 14,
     // Small circles are accepted and grown to at least this share of the short side.
     minRingRadiusViewport: 0.09,
+    maxRingRadiusViewport: 0.46,
     guideAfterFails: 2,
+  },
+  trail: {
+    // Width of the bright core. Slow strokes are soft and wide, fast ones thin.
+    coreSlowPx: 3.2,
+    coreFastPx: 1.5,
+    // Pointer speed, in px per ms, that counts as fast.
+    fastSpeed: 1.6,
+    failFadeMs: 500,
   },
   snap: {
     ms: 240,
@@ -86,11 +99,19 @@ export const portalConfig = {
     swellStrength: 0.55,
     destinationScale: 1.35,
     destinationBlurPx: 10,
+    // Share of the opening that passes before the page starts to settle.
+    settleFrom: 0.3,
+    ringWidthEnd: 0.05,
+    starFade: 0.3,
+    push: 3,
+  },
+  reduced: {
+    crossfadeMs: 400,
   },
   film: {
     grain: 0.045,
     vignette: 0.5,
-    bloom: 0.35,
+    bloom: 0.22,
     bloomThreshold: 0.75,
     edgeFringe: 0.00025,
   },

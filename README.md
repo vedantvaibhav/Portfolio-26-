@@ -16,19 +16,23 @@ Needs Node 22 and pnpm 10.
 
 ## The Portal entry
 
-The home page opens on a WebGL canvas above a placeholder destination.
+The home page opens on a WebGL scene above a placeholder destination. Draw a circle and it becomes a ring of light that opens the site. Enter or Space does the same from the keyboard.
 
 - `src/portal/config.ts` holds every timing, colour and intensity. Change values there, nowhere else.
-- `src/portal/scene.ts` is the scene class: `enter`, `update`, `resize`, `teardown`.
-- `src/portal/layers/` holds one file per thing in the scene: nebula, stars, planet, dust.
-- `src/components/portal/portal-entry.tsx` mounts the canvas and loads the scene on demand.
-- Open `/?debug` for the FPS meter and a panel that mirrors the config.
+- `src/portal/scene.ts` is the scene class (`enter`, `update`, `resize`, `teardown`) and runs the ritual.
+- `src/portal/ritual.ts` is the master timeline, from the loop closing to the site.
+- `src/portal/recognize.ts` decides whether a stroke is a circle. `pnpm test` runs its tests.
+- `src/portal/layers/` holds one file per thing in the scene: nebula, stars, planet, dust, trail.
+- `src/portal/effects.ts` holds the screen space pieces: the lens, the ring and its light, and the final pass that cuts the hole.
+- `src/components/portal/portal-entry.tsx` mounts the canvas, feeds it the pointer and loads the scene on demand.
+
+Open `/?debug` for the FPS meter and a panel that mirrors the config. Its timeline folder ignites the ring without drawing, pauses the opening and scrubs through it.
 
 ```bash
-pnpm portal:shots m1
+pnpm portal:shots m4
 ```
 
-That writes desktop and phone screenshots and a short screen capture to `docs/portal/shots/m1/` and prints the FPS reading. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
+That draws a circle and writes a still of every beat, desktop and phone, to `docs/portal/shots/m4/`. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
 
 ## Pinned versions
 
@@ -48,3 +52,4 @@ Every dependency in `package.json` is an exact version. Upgrade on purpose, one 
 | motion | 14.14.0 | UI transitions |
 | @next/mdx | 16.4.6 | Case studies |
 | playwright | 1.63.0 | Screenshot script |
+| vitest | 5.1.0 | Tests for the circle check |

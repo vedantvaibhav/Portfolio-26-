@@ -1,25 +1,39 @@
 import GUI from "lil-gui";
 import type { PortalConfig } from "./config";
-import type { FrameStats } from "./scene";
+import type { FrameStats, PortalScene } from "./scene";
 
 /**
  * Debug tools, loaded only when the URL has ?debug.
  * The panel is generated from the config object: one folder per group, a
  * colour picker for hex strings and a number field for everything else.
+ * The timeline folder runs the opening without drawing, and scrubs it.
  */
-export function createDebug(config: PortalConfig, onChange: () => void) {
+export function createDebug(config: PortalConfig, scene: PortalScene) {
   const gui = new GUI({ title: "Portal" });
 
+  const timeline = {
+    "ignite at centre": () => scene.igniteAtCentre(),
+    paused: false,
+    progress: 0,
+  };
+  const folder = gui.addFolder("timeline");
+  folder.add(timeline, "ignite at centre");
+  folder.add(timeline, "paused").onChange((paused: boolean) => scene.pause(paused));
+  folder.add(timeline, "progress", 0, 0.999, 0.001).onChange((progress: number) => scene.scrub(progress));
+
   for (const [groupName, group] of Object.entries(config)) {
-    const folder = gui.addFolder(groupName);
+    const groupFolder = gui.addFolder(groupName);
     const values = group as Record<string, string | number>;
     for (const key of Object.keys(values)) {
       const control =
-        typeof values[key] === "string" ? folder.addColor(values, key) : folder.add(values, key);
-      control.onChange(onChange);
+        typeof values[key] === "string" ? groupFolder.addColor(values, key) : groupFolder.add(values, key);
+      control.onChange(() => scene.applyConfig());
     }
-    if (groupName !== "space") folder.close();
+    groupFolder.close();
   }
+
+  // For screenshots and tests: window.__portal.igniteAtCentre(), .scrub(0.4), .strokeStart(x, y) and so on.
+  (window as unknown as { __portal?: PortalScene }).__portal = scene;
 
   const meter = document.createElement("div");
   meter.setAttribute("data-portal-fps", "");
@@ -44,6 +58,7 @@ export function createDebug(config: PortalConfig, onChange: () => void) {
     destroy() {
       gui.destroy();
       meter.remove();
+      delete (window as unknown as { __portal?: PortalScene }).__portal;
     },
   };
 }

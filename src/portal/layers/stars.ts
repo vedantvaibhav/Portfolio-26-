@@ -5,12 +5,12 @@ import { NOISE, PRECISION } from "../glsl";
 const VERTEX = /* glsl */ `
 attribute float aSize, aIntensity, aPhase;
 attribute vec3 aTint;
-uniform float uTime, uPixelRatio, uScale, uTwinkle;
+uniform float uTime, uPixelRatio, uScale, uTwinkle, uFade;
 varying vec3 vColor;
 void main(){
   gl_Position = projectionMatrix*modelViewMatrix*vec4(position, 1.);
   float twinkle = 1. - uTwinkle*(0.5+0.5*sin(uTime*(0.5+aPhase*0.9)+aPhase*6.2831));
-  vColor = aTint*aIntensity*twinkle;
+  vColor = aTint*aIntensity*twinkle*uFade;
   gl_PointSize = max(aSize*uScale, 1.5)*uPixelRatio;
 }
 `;
@@ -65,6 +65,7 @@ export class Stars {
         uPixelRatio: { value: 1 },
         uScale: { value: 1 },
         uTwinkle: { value: 0 },
+        uFade: { value: 1 },
       },
     });
     this.points = new Points(new BufferGeometry(), this.material);
@@ -83,8 +84,9 @@ export class Stars {
     this.material.uniforms.uScale.value = Math.min(1.6, Math.max(0.8, height / 900));
   }
 
-  update(time: number) {
+  update(time: number, fade = 1) {
     this.material.uniforms.uTime.value = time;
+    this.material.uniforms.uFade.value = fade;
   }
 
   dispose() {
