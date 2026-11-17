@@ -48,3 +48,11 @@ The page must read fully without animation and without JavaScript.
 ## Leave out
 
 Web games (Tetris, Auto Rush, Yolk of Truth), Nami, and any "changelog" framing.
+
+## The Portal entry
+
+The first screen is a WebGL entry ritual: draw a circle, it becomes a ring of light, the site opens through it. The spec is `docs/portal/handoff.md`. Work in its milestones and stop for Vedant's review after each one.
+
+- Storyboard: `docs/portal/storyboard/` (published at https://claude.ai/artifact/84tisomSshYJXEBg4GsW9R). `frames.html` is a throwaway concept shader, not the production scene. Re-render with `NODE_PATH=$(npm root -g) node docs/portal/storyboard/render.mjs`.
+- Nothing visual gets built until Vedant has approved the storyboard and its open decisions.
+- Brand colours: indigo `#33416b`, marigold `#e9a321`, coral `#f1a98c`. Type: IBM Plex Mono for the prompt, Newsreader italic for the destination headline.

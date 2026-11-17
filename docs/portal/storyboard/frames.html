@@ -1,0 +1,343 @@
+<!doctype html>
+<!--
+  Storyboard frame renderer for the Portal entry. Throwaway concept tool:
+  one fragment shader paints every beat as a still, the DOM sits under and
+  over it the way the real build will. Not the production scene.
+  Open with ?f=<frame id>. See render.mjs for the list.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1600px; height: 900px; overflow: hidden; background: #05060a; }
+  /* [PLACEHOLDER] destination, lifted from the 2D prototype */
+  .dest { position: absolute; inset: 0; overflow: hidden; background: #141311; color: #efe9dd; display: grid; place-items: center; }
+  .blob { position: absolute; border-radius: 50%; }
+  .b1 { width: 62vmax; height: 62vmax; left: -14vmax; top: -18vmax; background: radial-gradient(circle at 40% 40%, #f6cf7c, rgba(246,207,124,0) 68%); }
+  .b2 { width: 58vmax; height: 58vmax; right: -16vmax; top: 6vmax; background: radial-gradient(circle, #f1a98c, rgba(241,169,140,0) 66%); }
+  .b3 { width: 70vmax; height: 70vmax; left: 12vmax; bottom: -40vmax; background: radial-gradient(circle at 50% 40%, #4a5b93, rgba(51,65,107,0) 66%); }
+  .hero { position: relative; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  .hero p { font: 400 13px "IBM Plex Mono", monospace; letter-spacing: 0.08em; margin: 0; opacity: 0.8; }
+  .hero h1 { font: italic 400 124px/0.92 "Newsreader", Georgia, serif; letter-spacing: -0.02em; margin: 0; max-width: 9em; text-wrap: balance; }
+  .hero a { font: 400 12.5px "IBM Plex Mono", monospace; letter-spacing: 0.06em; color: inherit; opacity: 0.75; margin-top: 10px; text-underline-offset: 4px; }
+  canvas { position: absolute; inset: 0; width: 1600px; height: 900px; display: block; }
+  .hud { position: absolute; inset: 0; color: #e8ebf5; font: 400 13px "IBM Plex Mono", monospace; letter-spacing: 0.12em; }
+  .prompt { position: absolute; left: 0; right: 0; bottom: 86px; text-align: center; opacity: 0.7; }
+  .sub { position: absolute; left: 0; right: 0; bottom: 56px; text-align: center; opacity: 0.45; font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
+  .corner { position: absolute; bottom: 28px; font-size: 11.5px; opacity: 0.42; }
+  .enter { right: 36px; } .sound { left: 36px; }
+</style>
+</head>
+<body>
+<div class="dest" id="dest">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="hero"><p>Vedant Vaibhav</p><h1>Design, motion and engineering.</h1><a>Replay</a></div>
+</div>
+<canvas id="c" width="2400" height="1350"></canvas>
+<div class="hud" id="hud">
+  <div class="prompt" id="prompt"></div>
+  <div class="sub" id="sub"></div>
+  <div class="corner sound">Sound off</div>
+  <div class="corner enter">Enter</div>
+</div>
+
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2 uRes; uniform float uT;
+uniform vec2 uRingC; uniform float uRingR, uRingI, uRingW, uThin, uGuide, uPrism;
+uniform float uLens, uWarp, uCA, uHole, uSwell, uPull, uUI, uZoom, uTrailA, uStarFade;
+uniform vec2 uPan; uniform int uComp, uTrailN; uniform vec2 uTrail[96];
+const float PI = 3.14159265, TAU = 6.2831853;
+
+float h21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+vec2 h22(vec2 p){ float n = h21(p); return vec2(n, h21(p+n*17.13+1.7)); }
+float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(h21(i),h21(i+vec2(1,0)),f.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x), f.y); }
+float fbm(vec2 p){ float a=.5, s=0.; mat2 m=mat2(1.6,1.2,-1.2,1.6); for(int i=0;i<6;i++){ s+=a*vnoise(p); p=m*p; a*=.5; } return s; }
+mat2 rot2(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
+
+vec3 bump3y(vec3 x, vec3 y){ return clamp(vec3(1.)-x*x-y, 0., 1.); }
+vec3 spectral(float x){
+  const vec3 c1=vec3(3.54585104,2.93225262,2.41593945), x1=vec3(0.69549072,0.49228336,0.27699880), y1=vec3(0.02312639,0.15225084,0.52607955);
+  const vec3 c2=vec3(3.90307140,3.21182957,3.96587128), x2=vec3(0.11748627,0.86755042,0.66077860), y2=vec3(0.84897130,0.88445281,0.73949448);
+  return bump3y(c1*(x-x1),y1)+bump3y(c2*(x-x2),y2);
+}
+
+vec3 starLayer(vec2 p, float scale, float seed, float size, float density){
+  vec2 g=p*scale, id=floor(g); vec3 col=vec3(0.);
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec2 c=id+vec2(x,y);
+    if(h21(c+seed)>density) continue;
+    vec2 pos=c+h22(c*1.7+seed);
+    float d=length(g-pos)/scale;
+    float b=pow(h21(c+seed+3.1),5.0);
+    float s=size*(0.7+1.6*b);
+    vec3 tint=mix(vec3(0.72,0.82,1.0), vec3(1.0,0.84,0.66), smoothstep(0.55,1.0,h21(c+seed+9.7)));
+    col+=tint*(exp(-d*d/(s*s))*(0.22+1.9*b) + b*0.10*s*s/(d*d+s*s*6.0));
+  }
+  return col;
+}
+
+vec3 nebula(vec2 p){
+  vec2 q=p*1.25+vec2(fbm(p*1.1+3.0), fbm(p*1.1+11.0))*0.9;
+  float n=fbm(q*1.4+uT*0.01);
+  vec3 col=vec3(0.20,0.255,0.42)*smoothstep(0.30,0.82,n)*0.50;
+  float w=fbm(q*2.2+20.);
+  col+=vec3(0.914,0.639,0.129)*smoothstep(0.52,0.85,fbm(p*0.9+vec2(7.,2.)))*smoothstep(.40,.8,w)*0.16;
+  col+=vec3(0.945,0.663,0.549)*smoothstep(0.55,0.9,fbm(p*0.8+vec2(-4.,9.)))*smoothstep(.38,.8,w)*0.15;
+  col*=0.55+0.9*smoothstep(0.2,0.7,fbm(q*3.0+40.));
+  return col;
+}
+
+void planet(inout vec3 col, vec2 p, vec2 c, float R, vec3 L, vec3 A, vec3 B, float seed, vec3 atmo){
+  vec2 q=(p-c)/R; float d=length(q);
+  float lim=dot(normalize(vec3(q,0.0001)),L);
+  if(d<1.0){
+    vec3 n=vec3(q,sqrt(1.-d*d));
+    float ndl=dot(n,L);
+    vec3 s=n; s.xy=rot2(0.42)*s.xy;
+    float lon=atan(s.x,s.z)+seed, lat=asin(clamp(s.y,-1.,1.));
+    float bands=fbm(vec2(lon*1.3,lat*6.5)+seed*3.+0.7*fbm(vec2(lon*3.,lat*9.)+seed));
+    float det=fbm(vec2(lon*6.,lat*16.)+seed*7.);
+    vec3 alb=mix(A,B,smoothstep(0.25,0.75,bands))*(0.75+0.5*det);
+    vec3 pc=alb*smoothstep(-0.12,0.5,ndl)*(0.2+1.0*max(ndl,0.))+alb*0.010;
+    pc+=atmo*pow(1.-n.z,3.2)*smoothstep(-0.35,0.25,ndl)*1.5;
+    float a=smoothstep(1.0,1.0-2.5/(R*uRes.y*uZoom),d);
+    col=mix(col,pc,a);
+  }
+  float e=max(d-1.,0.);
+  col+=atmo*(exp(-e/0.03)*smoothstep(-0.45,0.35,lim)*0.5 + exp(-e/0.16)*smoothstep(-0.2,0.7,lim)*0.10)*step(1.0,d);
+}
+
+// ---- interface debris ----
+float sdRB(vec2 p, vec2 b, float r){ vec2 q=abs(p)-b+r; return length(max(q,0.))+min(max(q.x,q.y),0.)-r; }
+float sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; return length(pa-ba*clamp(dot(pa,ba)/dot(ba,ba),0.,1.)); }
+float sdCursor(vec2 p){
+  vec2 v[7]=vec2[7](vec2(0.,0.5),vec2(0.70,-0.20),vec2(0.40,-0.22),vec2(0.56,-0.58),vec2(0.42,-0.64),vec2(0.26,-0.28),vec2(0.,-0.5));
+  p.x+=0.33;
+  float d=dot(p-v[0],p-v[0]), s=1.;
+  for(int i=0,j=6;i<7;j=i,i++){ vec2 e=v[j]-v[i], w=p-v[i]; vec2 b=w-e*clamp(dot(w,e)/dot(e,e),0.,1.); d=min(d,dot(b,b));
+    bvec3 c=bvec3(p.y>=v[i].y, p.y<v[j].y, e.x*w.y>e.y*w.x); if(all(c)||all(not(c))) s*=-1.; }
+  return s*sqrt(d)-0.035;
+}
+float uiMat;
+float uiSDF(int k, vec2 p){
+  uiMat=0.;
+  if(k==0) return sdCursor(p);
+  if(k==1){ float t=sdRB(p,vec2(0.9,0.5),0.5), kn=length(p-vec2(0.4,0.))-0.37; if(kn<0.) uiMat=1.; else uiMat=2.; return t; }
+  if(k==2){ float l=sdSeg(p,vec2(-0.9,0.),vec2(0.9,0.))-0.028; float a=sdRB(p,vec2(0.13),0.02);
+    float e=min(length(p-vec2(-0.9,0.)),length(p-vec2(0.9,0.)))-0.11; float d=min(l,min(a,e)); if(a<0.) uiMat=2.; return d; }
+  float b=sdRB(p,vec2(1.0,0.36),0.2); if(sdRB(p,vec2(0.5,0.045),0.045)<0.) uiMat=3.; return b;
+}
+void piece(inout vec3 col, vec2 p, int k, vec2 pos, float rot, float sc, float blur, float alpha, vec3 L){
+  vec2 q=rot2(rot)*(p-pos)/sc;
+  if(max(abs(q.x),abs(q.y))>1.8+blur*2.) return;
+  float e=0.02;
+  float dx=uiSDF(k,q+vec2(e,0.)), dy=uiSDF(k,q+vec2(0.,e)), d=uiSDF(k,q); float mat=uiMat;
+  vec2 g=vec2(dx-d,dy-d)/e;
+  float h=clamp(-d/0.12,0.,1.);
+  vec3 n=normalize(vec3(g*(1.-h)*1.5,1.0)); n.xy=transpose(rot2(rot))*n.xy;
+  float ndl=dot(n,L);
+  vec3 base=vec3(0.80,0.78,0.74);
+  if(mat==2.) base=vec3(0.914,0.639,0.129);
+  if(mat==3.) base=vec3(0.30,0.33,0.45);
+  if(mat==1.) base=vec3(0.95,0.94,0.90);
+  vec3 c=base*(0.06+0.95*smoothstep(-0.3,0.95,ndl))+vec3(0.2,0.255,0.42)*0.22*(1.-smoothstep(-0.3,0.6,ndl));
+  c+=vec3(1.0,0.9,0.8)*pow(max(ndl,0.),12.)*0.25*(1.-h);
+  float px=1.5/(sc*uRes.y*uZoom);
+  float b=max(blur,px);
+  col=mix(col,c,smoothstep(b,-b,d)*alpha);
+}
+
+vec3 background(vec2 p){
+  vec3 col=mix(vec3(0.020,0.024,0.040), vec3(0.043,0.059,0.110), smoothstep(-0.6,0.7,p.y*0.8+p.x*0.35+0.25*fbm(p*0.7)));
+  col+=nebula(p);
+  vec3 st=starLayer(p,46.,1.,0.00080,0.26)*0.50+starLayer(p,82.,7.,0.00065,0.22)*0.32+starLayer(p,22.,13.,0.0012,0.13)*0.95;
+  col+=st*uStarFade;
+  vec3 L=normalize(vec3(-0.72,0.38,0.42));
+  if(uComp==0){
+    planet(col,p,vec2(0.52,0.20),0.088,L,vec3(0.12,0.15,0.25),vec3(0.36,0.30,0.30),2.0,vec3(0.45,0.62,1.0));
+    planet(col,p,vec2(-0.585,-0.17),0.021,L,vec3(0.30,0.24,0.22),vec3(0.62,0.50,0.40),5.0,vec3(0.95,0.66,0.50));
+  } else if(uComp==1){
+    planet(col,p,vec2(0.70,-1.02),0.86,L,vec3(0.11,0.14,0.24),vec3(0.34,0.28,0.29),2.0,vec3(0.45,0.62,1.0));
+    planet(col,p,vec2(-0.52,0.27),0.034,L,vec3(0.30,0.24,0.22),vec3(0.62,0.50,0.40),5.0,vec3(0.95,0.66,0.50));
+  }
+  // near dust, out of focus
+  for(int i=0;i<7;i++){ float fi=float(i);
+    vec2 c=(h22(vec2(fi,3.7))-0.5)*vec2(1.9,1.05); float r=0.008+0.03*h21(vec2(fi,8.2));
+    float m=smoothstep(r,r*0.55,length(p-c));
+    col+=mix(vec3(0.35,0.42,0.7),vec3(0.9,0.7,0.5),h21(vec2(fi,1.3)))*m*(0.018+0.03*h21(vec2(fi,5.5)));
+  }
+  if(uUI>1.5){
+    piece(col,p,0,vec2(-0.50,0.03),0.55,0.150,0.030,1.,L);
+    piece(col,p,1,vec2(-0.05,-0.14),-0.35,0.105,0.045,1.,L);
+    piece(col,p,2,vec2(0.47,0.10),0.9,0.170,0.085,0.95,L);
+    piece(col,p,3,vec2(0.02,0.27),0.22,0.150,0.30,0.6,L);
+  } else if(uUI>0.){
+    piece(col,p,0,vec2(-0.60,0.215),0.55,0.040,0.05,uUI,L);
+    piece(col,p,1,vec2(0.585,-0.265),-0.35,0.030,0.10,uUI,L);
+    piece(col,p,2,vec2(0.20,0.385),0.9,0.050,0.16,uUI*0.9,L);
+    piece(col,p,3,vec2(-0.74,-0.43),0.30,0.11,0.55,uUI*0.38,L);
+  }
+  return col;
+}
+
+vec3 ringLight(vec2 p){
+  vec2 q=p-uRingC; float r=length(q); vec2 cs=q/max(r,1e-5); float th=atan(q.y,q.x);
+  float n1=fbm(cs*1.3+uT*0.05+3.), n2=fbm(cs*1.7-uT*0.04+9.);
+  float R=uRingR*(1.+0.014*(n1-0.5));
+  float w=uRingR*uRingW*(0.86+0.28*n2);
+  float x=(r-R)/w;
+  float film=0.15*sin(th*2.0+uT*0.6+n1*4.0)+0.10*(n2-0.5);
+  vec3 col;
+  if(uPrism<0.5){
+    col=spectral(clamp(0.5+0.36*x+film,0.,1.))*exp(-x*x*0.9)*0.92;
+    col+=vec3(1.0,0.97,0.92)*exp(-x*x*22.0)*0.30;
+    vec3 tint=mix(vec3(0.42,0.55,1.0),vec3(1.0,0.56,0.42),smoothstep(-2.5,2.5,x));
+    col+=tint*(0.19*exp(-abs(x)/2.4)+0.10*exp(-abs(x)/8.0)+0.045*exp(-abs(x)/24.0));
+  } else {
+    col=spectral(clamp(0.5+0.47*x+film*0.6,0.,1.))*smoothstep(1.3,0.7,abs(x))*1.15;
+    col+=spectral(clamp(0.5+0.47*(x-3.2)*1.6,0.,1.))*smoothstep(1.0,0.5,abs(x-3.2)*1.6)*0.22;
+    vec3 tint=mix(vec3(0.45,0.58,1.0),vec3(1.0,0.58,0.42),smoothstep(-2.,2.,x));
+    col+=tint*(0.13*exp(-abs(x)/3.0)+0.06*exp(-abs(x)/10.0)+0.02*exp(-abs(x)/30.0));
+  }
+  return col*uRingI;
+}
+
+float streaks(vec2 p, float na, float seed, float amount, float rMin, float rSpan, float lenK, float dens){
+  vec2 q=p-uRingC; float r=length(q); float a=(atan(q.y,q.x)+PI)/TAU*na; float ai=floor(a), af=fract(a)-0.5;
+  float h=h21(vec2(ai,seed)); if(h>dens) return 0.;
+  float r0=rMin+rSpan*h21(vec2(ai,seed+7.));
+  float len=(0.02+lenK*h21(vec2(ai,seed+11.)))*amount*(0.4+r0);
+  float al=(r-r0)/max(len,1e-4);
+  float m=step(0.,al)*step(al,1.)*pow(1.-al,0.6)*smoothstep(0.,0.08,al);
+  float wA=af*r*TAU/na; float wd=0.0007+0.0009*h;
+  return m*exp(-wA*wA/(wd*wd))*(0.25+0.9*h);
+}
+
+vec3 trail(vec2 p){
+  if(uTrailN<2) return vec3(0.);
+  float best=1e9, bt=0.;
+  for(int i=0;i<uTrailN-1;i++){ vec2 a=uTrail[i], b=uTrail[i+1], pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);
+    float d=length(pa-ba*h); if(d<best){ best=d; bt=(float(i)+h)/float(uTrailN-1); } }
+  float sp=0.5+0.5*sin(bt*9.0+1.0);            // speed along the stroke: fast = thin and bright
+  float w=mix(0.0034,0.0016,sp);
+  float age=smoothstep(0.0,0.45,bt);
+  vec3 col=vec3(1.0,0.98,0.95)*exp(-best*best/(w*w))*(0.9+0.9*sp);
+  col+=vec3(0.50,0.66,1.0)*(0.42*exp(-best/(w*4.5))+0.10*exp(-best/(w*16.)));
+  col*=age;
+  vec2 head=uTrail[uTrailN-1]; float dh=length(p-head);
+  col+=vec3(1.0,0.97,0.94)*exp(-dh*dh/(0.004*0.004))*1.6+vec3(0.5,0.66,1.0)*0.4*exp(-dh/0.022);
+  for(int i=30;i<uTrailN;i+=3){ vec2 s=uTrail[i]+(h22(vec2(float(i),2.))-0.5)*0.05*(1.-float(i)/float(uTrailN)*0.5);
+    float ds=length(p-s); col+=vec3(0.8,0.88,1.0)*exp(-ds*ds/(0.0011*0.0011))*0.9*float(i)/float(uTrailN); }
+  return col*uTrailA;
+}
+
+vec4 scene(vec2 p){
+  vec2 q=p-uRingC; float r=length(q); vec2 pl=p;
+  if(uLens>0.){ float R=uRingR; float m=smoothstep(R*1.25,R*0.8,r); float edge=exp(-pow((r-R)/(0.24*R),2.));
+    pl=uRingC+q*(1.-uLens*(0.30*m+0.46*edge)); }
+  vec3 col=background(pl);
+  col*=1.-0.30*uLens*smoothstep(uRingR,uRingR*0.5,r);
+  if(uPull>0.) col+=vec3(0.8,0.86,1.0)*0.8*smoothstep(uRingR*2.7,uRingR*1.15,r)*(streaks(p,150.,3.,uPull,uRingR*1.16,uRingR*1.1,0.07,0.20)+streaks(p,90.,21.,uPull,uRingR*1.12,uRingR*0.6,0.045,0.22));
+  if(uWarp>0.) col+=vec3(0.82,0.88,1.0)*(streaks(p,320.,31.,uWarp,0.05,1.2,0.75,0.5)+streaks(p,520.,47.,uWarp,0.1,1.3,0.55,0.45)*0.8+streaks(p,190.,57.,uWarp,0.02,0.9,1.1,0.5)*1.2);
+  float a=1.;
+  if(uHole>0.) a=smoothstep(uHole*0.84,uHole*0.97,r);
+  // vignette and grain belong to the space, not to the DOM behind the hole
+  col*=1.-0.38*smoothstep(0.35,1.05,length(p*vec2(0.92,1.15)));
+  col*=a;
+  vec3 light=vec3(0.);
+  if(uRingI>0.) light+=ringLight(p);
+  if(uThin>0.){ float d=abs(r-uRingR); light+=(vec3(1.0,0.99,0.97)*exp(-d*d/(0.0016*0.0016))*1.5+vec3(0.5,0.66,1.0)*(0.5*exp(-d/0.008)+0.12*exp(-d/0.03)))*uThin; }
+  if(uGuide>0.){ float d=abs(r-uRingR); float dash=smoothstep(0.25,0.15,abs(fract(atan(q.y,q.x)/TAU*72.)-0.5)); light+=vec3(0.8,0.85,1.0)*exp(-d*d/(0.0011*0.0011))*dash*uGuide; }
+  light+=trail(p);
+  if(uSwell>0.) light+=vec3(1.0,0.93,0.86)*uSwell*(0.10+0.34*smoothstep(0.25,1.0,length(p*vec2(0.95,1.3))));
+  return vec4(col+light,a);
+}
+
+vec3 shoulder(vec3 x){ vec3 k=max(x-0.62,0.); return min(x,vec3(0.62))+0.38*(1.-exp(-k/0.38)); }
+
+void main(){
+  vec2 p=(gl_FragCoord.xy-0.5*uRes)/uRes.y; p=p/uZoom+uPan;
+  vec4 s=scene(p);
+  if(uCA>0.){ vec2 c=uRingC; s.r=scene(c+(p-c)*(1.-uCA)).r; s.b=scene(c+(p-c)*(1.+uCA)).b; }
+  vec3 col=s.rgb;
+  float g=h21(gl_FragCoord.xy*0.731+uT*13.)-0.5;
+  col+=g*0.045*(0.35+0.65*s.a)*(0.6+0.8*sqrt(max(dot(col,vec3(0.333)),0.)));
+  col=shoulder(max(col,0.));
+  o=vec4(col,s.a);
+}
+</script>
+<script>
+const params = new URLSearchParams(location.search);
+const id = params.get('f') || 'arrival-distant';
+const C = [0.0, 0.03], R = 0.185;
+
+function handStroke(sweepDeg) {
+  const pts = [], n = 90, a0 = 2.0;
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1), a = a0 - t * sweepDeg * Math.PI / 180;
+    const wob = 1 + 0.055 * Math.sin(a * 2.3 + 0.7) + 0.025 * Math.sin(a * 5.1) - 0.05 * t;
+    pts.push([C[0] + Math.cos(a) * R * wob * 1.06, C[1] + Math.sin(a) * R * wob * 0.95]);
+  }
+  return pts;
+}
+
+const base = { comp: 0, ui: 1, zoom: 1, pan: [0, 0], ringC: C, ringR: R, ringI: 0, ringW: 0.12, thin: 0, guide: 0, prism: 0,
+  lens: 0, warp: 0, ca: 0, hole: 0, swell: 0, pull: 0, trail: null, trailA: 1, starFade: 1,
+  prompt: 'Draw a circle.', sub: '', hud: true, dest: null };
+
+const frames = {
+  'blank':            { ui: 0, prompt: '', hud: false, starFade: 0, comp: 2 },
+  'arrival-distant':  {},
+  'arrival-limb':     { comp: 1 },
+  'arrival-plain':    { ui: 0 },
+  'debris-detail':    { ui: 2, comp: 2, hud: false },
+  'drawing':          { trail: handStroke(255), prompt: '' },
+  'fail':             { trail: handStroke(215), trailA: 0.32, guide: 0.5, prompt: 'Close the loop.', sub: 'Or just come in →' },
+  'snap':             { thin: 1, prompt: '' },
+  'ignition-soft':    { ringI: 1.12, ringW: 0.16, lens: 0.75, pull: 1, prompt: '', hud: false },
+  'ignition-prism':   { ringI: 1.12, ringW: 0.07, prism: 1, lens: 0.75, pull: 1, prompt: '', hud: false },
+  'opening-early':    { ringI: 1.25, ringR: 0.335, ringW: 0.10, lens: 0.55, warp: 0.35, ca: 0.006, hole: 0.335, starFade: 0.75, hud: false, dest: { scale: 1.3, blur: 9 } },
+  'opening-late':     { ringI: 1.35, ringR: 0.80, ringW: 0.05, lens: 0.3, warp: 1.0, ca: 0.016, hole: 0.80, swell: 0.55, starFade: 0.3, hud: false, dest: { scale: 1.1, blur: 3.5 } },
+  'destination':      { hud: false, dest: { scale: 1, blur: 0 }, canvasOff: true },
+};
+const F = Object.assign({}, base, frames[id]);
+
+document.getElementById('prompt').textContent = F.prompt;
+document.getElementById('sub').textContent = F.sub;
+document.getElementById('hud').style.display = F.hud ? '' : 'none';
+const dest = document.getElementById('dest');
+if (F.dest) { dest.style.transform = `scale(${F.dest.scale})`; dest.style.filter = F.dest.blur ? `blur(${F.dest.blur}px)` : 'none';
+  // the ring is the origin of the reveal
+  dest.style.transformOrigin = `${50 + F.ringC[0] / (16 / 9) * 100}% ${50 - F.ringC[1] * 100}%`; } else dest.style.visibility = 'hidden';
+
+const cv = document.getElementById('c');
+if (F.canvasOff) cv.style.display = 'none';
+const gl = cv.getContext('webgl2', { premultipliedAlpha: true, alpha: true, preserveDrawingBuffer: true });
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { document.title = 'ERR'; throw new Error(gl.getShaderInfoLog(s)); } return s; }
+const pr = gl.createProgram();
+gl.attachShader(pr, sh(gl.VERTEX_SHADER, '#version 300 es\nin vec2 a; void main(){ gl_Position=vec4(a,0.,1.); }'));
+gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent));
+gl.linkProgram(pr);
+if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { document.title = 'ERR'; throw new Error(gl.getProgramInfoLog(pr)); }
+gl.useProgram(pr);
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.bindAttribLocation(pr, 0, 'a'); gl.vertexAttribPointer(gl.getAttribLocation(pr, 'a'), 2, gl.FLOAT, false, 0, 0);
+const U = (n) => gl.getUniformLocation(pr, n);
+gl.uniform2f(U('uRes'), cv.width, cv.height); gl.uniform1f(U('uT'), 4.0);
+gl.uniform2f(U('uRingC'), F.ringC[0], F.ringC[1]);
+for (const [u, k] of [['uRingR','ringR'],['uRingI','ringI'],['uRingW','ringW'],['uThin','thin'],['uGuide','guide'],['uPrism','prism'],['uLens','lens'],['uWarp','warp'],['uCA','ca'],['uHole','hole'],['uSwell','swell'],['uPull','pull'],['uUI','ui'],['uZoom','zoom'],['uTrailA','trailA'],['uStarFade','starFade']]) gl.uniform1f(U(u), F[k]);
+gl.uniform2f(U('uPan'), F.pan[0], F.pan[1]); gl.uniform1i(U('uComp'), F.comp);
+const tr = F.trail || []; gl.uniform1i(U('uTrailN'), tr.length);
+if (tr.length) gl.uniform2fv(U('uTrail[0]'), new Float32Array(tr.flat()));
+gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES, 0, 3); gl.finish();
+document.fonts.ready.then(() => { document.title = 'READY'; });
+</script>
+</body>
+</html>

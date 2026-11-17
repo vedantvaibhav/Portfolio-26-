@@ -1,0 +1,252 @@
+<title>Portal Storyboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&family=Newsreader:ital,opsz,wght@1,6..72,400&display=swap">
+<style>
+  /* Layout: one dark column of film frames, read top to bottom like a strip.
+     Each beat is a frame with a slate beside it. Decisions sit after the strip
+     as side by side pairs. Single dark look on purpose: the frames are space. */
+  :root {
+    color-scheme: dark;
+    --space: #06070c;
+    --panel: #0c1020;
+    --ink: #e9e6de;
+    --dim: #9a9eb4;
+    --line: rgba(233, 230, 222, 0.14);
+    --marigold: #e9a321;
+    --coral: #f1a98c;
+    --indigo: #5a6ca6;
+    --display: "Newsreader", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  body { background: var(--space); color: var(--ink); font: 400 16px/1.6 var(--body); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding-block: 56px 96px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex; flex-direction: column; gap: 72px; }
+  h1, h2, h3, p, ol, ul, figure { margin: 0; }
+  h1 { font: italic 400 clamp(44px, 8vw, 88px)/0.95 var(--display); letter-spacing: -0.02em; text-wrap: balance; }
+  h2 { font: italic 400 clamp(30px, 4.4vw, 44px)/1.05 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
+  h3 { font: 500 17px/1.3 var(--body); }
+  .mono { font: 400 12.5px/1.5 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+  p, li { max-width: 64ch; }
+  .dim { color: var(--dim); }
+  header { display: flex; flex-direction: column; gap: 20px; }
+  header p { font-size: 18px; }
+  .note { border-left: 2px solid var(--marigold); padding-left: 16px; color: var(--dim); font-size: 15px; }
+  section { display: flex; flex-direction: column; gap: 28px; }
+
+  /* timing strip */
+  .bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
+  .bar span { display: block; min-width: 0; }
+  .t-snap { background: var(--ink); flex: 240; }
+  .t-ign { background: var(--marigold); flex: 660; }
+  .t-open { background: var(--coral); flex: 1200; }
+  .key { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px 28px; }
+  .key li { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+  .key b { font: 500 13px var(--mono); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; }
+
+  /* the strip */
+  .beat { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding-top: 28px; border-top: 1px solid var(--line); }
+  .slate { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 40px; }
+  .slate ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--dim); font-size: 15px; }
+  .slate .head { display: flex; flex-direction: column; gap: 6px; }
+  @media (min-width: 860px) { .slate { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+  figure img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 6px; background: var(--panel); }
+  figcaption { margin-top: 8px; font: 400 12.5px/1.5 var(--mono); color: var(--dim); letter-spacing: 0.02em; }
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  @media (min-width: 860px) { .pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .pick { color: var(--marigold); }
+  .decision { display: flex; flex-direction: column; gap: 16px; padding-top: 28px; border-top: 1px solid var(--line); }
+  .plain { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .plain li::marker { color: var(--dim); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="mono">vedantvaibhav.com · the entry · for approval</p>
+    <h1>Draw a circle. The site opens from it.</h1>
+    <p>Six beats, twelve frames, five decisions. Approve the sequence and pick an option for each decision, and I start building.</p>
+    <p class="note">These are concept stills. I rendered them with a throwaway shader so every frame is something WebGL can really do, but none of this is the build. The planets and the interface pieces stand in for Blender models. The bloom is faked. The destination is the placeholder from your 2D prototype.</p>
+  </header>
+
+  <section aria-labelledby="timing">
+    <h2 id="timing">From the loop closing to the site: 2.1 seconds</h2>
+    <div class="bar" role="img" aria-label="Timing bar. Snap 0 to 240 milliseconds, ignition 240 to 900, opening 900 to 2100.">
+      <span class="t-snap"></span><span class="t-ign"></span><span class="t-open"></span>
+    </div>
+    <ul class="key">
+      <li><b><span class="sw" style="background: var(--ink)"></span>0 to 240 ms</b>Snap. The stroke pulls into a perfect circle.</li>
+      <li><b><span class="sw" style="background: var(--marigold)"></span>240 to 900 ms</b>Ignition. The held breath.</li>
+      <li><b><span class="sw" style="background: var(--coral)"></span>900 to 2,100 ms</b>Opening. Slow, then very fast.</li>
+    </ul>
+    <p class="dim">Before that, the visitor sets the pace. Space is on screen at once, the prompt fades in at 1.2 s, and drawing takes as long as it takes. Every number here goes into the debug panel so you can tune it by feel.</p>
+  </section>
+
+  <section aria-labelledby="strip">
+    <h2 id="strip">The sequence</h2>
+
+    <div class="beat">
+      <figure><img src="frames/arrival-distant.jpg" width="2400" height="1350" alt="Dark open space with a faint indigo haze, sparse stars, a half lit planet far to the upper right, a tiny second planet to the left, and four small pieces of interface drifting near the edges. A quiet line of mono type at the bottom reads Draw a circle." loading="lazy"></figure>
+      <div class="slate">
+        <div class="head"><p class="mono">Beat 1 · 0 to about 3 s</p><h3>Arrival</h3></div>
+        <ul>
+          <li>Space is there on load. No logo, no nav, no scroll hint.</li>
+          <li>Stars twinkle in three depth layers. The haze drifts. The planet turns very slowly.</li>
+          <li>The camera breathes and leans a few degrees toward the pointer.</li>
+          <li>The prompt fades in at 1.2 s. Sound stays off until the first touch.</li>
+          <li>Enter and the sound toggle sit in the bottom corners from the start.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="beat">
+      <figure><img src="frames/drawing.jpg" width="2400" height="1350" alt="The same space with a bright hand drawn trail of light forming most of a circle in the centre. The trail is thin and bright where the hand moved fast, softer and wider where it slowed, and it fades at its tail. The prompt is gone." loading="lazy"></figure>
+      <div class="slate">
+        <div class="head"><p class="mono">Beat 2 · visitor paced</p><h3>Drawing</h3></div>
+        <ul>
+          <li>The pointer leaves a trail of light. Fast is thin and bright. Slow is soft and wide.</li>
+          <li>The tail fades if the hand stops. A few sparks shed off the stroke.</li>
+          <li>The prompt steps back while the hand is down.</li>
+          <li>Sound: a filtered whisper that follows the speed of the stroke.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="beat">
+      <figure><img src="frames/snap.jpg" width="2400" height="1350" alt="The hand drawn stroke has become a thin, perfect circle of white light with a soft blue glow, centred where the visitor drew." loading="lazy"></figure>
+      <div class="slate">
+        <div class="head"><p class="mono">Beat 3 · 0 to 240 ms</p><h3>Recognition</h3></div>
+        <ul>
+          <li>The check runs while the hand is still moving. The moment the loop closes, it fires.</li>
+          <li>The stroke snaps to a perfect circle around its own centre. It should feel magnetic.</li>
+          <li>One haptic tick on phones. One soft glass ping.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="beat">
+      <figure><img src="frames/fail.jpg" width="2400" height="1350" alt="A stroke that did not close is dissolving. A faint dotted guide ring shows where to trace. The prompt reads Close the loop, with a small link under it reading Or just come in." loading="lazy"><figcaption>This frame shows the guide ring (after 2 misses) and the way in (after 3) together.</figcaption></figure>
+      <div class="slate">
+        <div class="head"><p class="mono">Beat 3, the other way</p><h3>When it isn't a circle</h3></div>
+        <ul>
+          <li>No red, no shake. The trail dissolves and the prompt changes.</li>
+          <li>"Close the loop." "Bigger." "Rounder."</li>
+          <li>After 2 misses a dotted ring appears to trace.</li>
+          <li>After 3, "Or just come in →".</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="beat">
+      <figure><img src="frames/ignition-soft.jpg" width="2400" height="1350" alt="The circle has become a thick, soft ring of rainbow light, red on the outside and violet on the inside, with a warm glow around it. The space inside the ring is darker and the stars near its edge bend. Short streaks of light point inward toward the ring." loading="lazy"></figure>
+      <div class="slate">
+        <div class="head"><p class="mono">Beat 4 · 240 to 900 ms</p><h3>Ignition</h3></div>
+        <ul>
+          <li>The circle becomes the ring. Red outside, blue inside, colour sliding slowly around it.</li>
+          <li>The space inside starts to lens. Stars near the edge bend.</li>
+          <li>Dust is pulled toward the ring. The camera pushes in a few percent.</li>
+          <li>Sound: a low rumble rising.</li>
+          <li>This is the only bright thing on screen. Nothing else glows.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="beat">
+      <div class="pair">
+        <figure><img src="frames/opening-early.jpg" width="2400" height="1350" alt="The ring is larger. Inside it, instead of space, the destination page is visible, scaled up and blurred. Stars outside the ring have stretched into streaks pointing away from its centre." loading="lazy"><figcaption>About 1,500 ms. The site is inside the ring.</figcaption></figure>
+        <figure><img src="frames/opening-late.jpg" width="2400" height="1350" alt="The ring now reaches the edges of the screen. The destination fills almost the whole frame, nearly in focus. Only the corners still show space and warp streaks, with a soft wash of light." loading="lazy"><figcaption>About 1,950 ms. The ring crosses the screen edge.</figcaption></figure>
+      </div>
+      <div class="slate">
+        <div class="head"><p class="mono">Beat 5 · 900 to 2,100 ms</p><h3>The opening</h3></div>
+        <ul>
+          <li>The ring grows slowly, then very fast, until it passes the edges.</li>
+          <li>The site shows through it as real HTML, scaled up and blurred, settling as the ring passes.</li>
+          <li>Stars stretch into streaks. Colour fringing ramps up and back to zero.</li>
+          <li>One soft swell of light as the ring crosses the edge. Under 150 ms, never white.</li>
+          <li>Sound: a whoosh that follows the growth, then air.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="beat">
+      <figure><img src="frames/destination.jpg" width="2400" height="1350" alt="The placeholder destination: a dark page with soft marigold, coral and indigo colour fields, the name Vedant Vaibhav in small mono type, a large italic serif headline reading Design, motion and engineering, and a Replay link." loading="lazy"><figcaption>Placeholder destination, borrowed from your prototype.</figcaption></figure>
+      <div class="slate">
+        <div class="head"><p class="mono">Beat 6 · 2,100 ms on</p><h3>In the site</h3></div>
+        <ul>
+          <li>The 3D scene is torn down or dropped to idle.</li>
+          <li>Keyboard and screen reader focus moves to the headline.</li>
+          <li>For now: your name, "Design, motion and engineering.", and Replay.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="decisions">
+    <h2 id="decisions">Five things to decide</h2>
+
+    <div class="decision">
+      <h3>1. Where the planet sits</h3>
+      <div class="pair">
+        <figure><img src="frames/arrival-distant.jpg" width="2400" height="1350" alt="Option A. A small half lit planet far away in the upper right, with most of the frame left empty." loading="lazy"><figcaption>A. Distant. <span class="pick">My pick.</span></figcaption></figure>
+        <figure><img src="frames/arrival-limb.jpg" width="2400" height="1350" alt="Option B. The curved edge of a very large planet fills the lower right corner, lit along its upper rim with a thin blue atmosphere." loading="lazy"><figcaption>B. Limb.</figcaption></figure>
+      </div>
+      <p>A leaves the centre empty, so the ring is the only event. B is the more dramatic still, but the planet's lit rim is a second glow and it sits under the prompt.</p>
+    </div>
+
+    <div class="decision">
+      <h3>2. Interface pieces in the debris</h3>
+      <div class="pair">
+        <figure><img src="frames/debris-detail.jpg" width="2400" height="1350" alt="Close view of four objects floating in space: a cursor arrow, a marigold toggle switch, a bezier handle with a marigold anchor, and a blurred button." loading="lazy"><figcaption>The four pieces, close up. Cursor, toggle, bezier handle, button.</figcaption></figure>
+        <figure><img src="frames/arrival-plain.jpg" width="2400" height="1350" alt="The arrival frame with no interface pieces. Only stars, haze, planets and soft dust." loading="lazy"><figcaption>Arrival without them.</figcaption></figure>
+      </div>
+      <p><span class="pick">My pick: keep them.</span> Four or five pieces, small, near the edges, most of them out of focus. They are the one thing in the frame that could only be your site. The marigold toggle is also the only brand colour on screen before the ring.</p>
+    </div>
+
+    <div class="decision">
+      <h3>3. The ring</h3>
+      <div class="pair">
+        <figure><img src="frames/ignition-soft.jpg" width="2400" height="1350" alt="Option A. A thick, soft rainbow band with a wide warm glow." loading="lazy"><figcaption>A. Soft band. <span class="pick">My pick.</span></figcaption></figure>
+        <figure><img src="frames/ignition-prism.jpg" width="2400" height="1350" alt="Option B. A thin, sharp rainbow line with a faint second ring outside it." loading="lazy"><figcaption>B. Prism line.</figcaption></figure>
+      </div>
+      <p>A is closer to the Lusion ring and takes bloom well. B is more precise and reads more like optics, but it is thinner on a phone and has less to give when it expands.</p>
+    </div>
+
+    <div class="decision">
+      <h3>4. What is behind the ring for now</h3>
+      <p>I used the destination from your prototype: dark, with marigold, coral and indigo colour fields. It makes the opening read clearly because the site is warmer and brighter than space. Keep it as the placeholder, or tell me what you'd rather see through the ring.</p>
+    </div>
+
+    <div class="decision">
+      <h3>5. Small things I chose without asking</h3>
+      <ul class="plain">
+        <li>Prompt in sentence case, as you wrote it.</li>
+        <li>Sound toggle bottom left, Enter bottom right, both at low contrast.</li>
+        <li>The trail and the snapped circle are white with a blue glow. Colour only arrives at ignition.</li>
+        <li>The planet's atmosphere rim is cool blue. The warm colours stay in the far haze.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="variants">
+    <h2 id="variants">Not drawn, but in the plan</h2>
+    <ul class="plain">
+      <li><strong>Reduced motion.</strong> No warp and no camera push. The ring fades in and the site crossfades over 400 ms.</li>
+      <li><strong>Keyboard.</strong> Enter or Space ignites a perfect circle at the centre.</li>
+      <li><strong>Returning visitors.</strong> About 1 s of space, then a shorter opening on its own. They can still draw.</li>
+      <li><strong>No WebGL.</strong> A still of the space, the prompt, the Enter button, and a CSS crossfade.</li>
+      <li><strong>Deep links.</strong> Any /work/ page skips the ritual.</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="unsure">
+    <h2 id="unsure">What I'm unsure about</h2>
+    <ul class="plain">
+      <li><strong>I couldn't open the references.</strong> lusion.co, zero.university, igloo.inc, oryzo.ai and the Codrops article are blocked from my environment. These frames are built from what I know of those sites, not from a side by side.</li>
+      <li><strong>Phone portrait.</strong> Every frame here is 16:9. The portrait composition needs its own pass in milestone 1.</li>
+      <li><strong>Lensing.</strong> It is subtle in a still. It reads in motion, when stars slide across the ring edge. I'll confirm in milestone 3.</li>
+      <li><strong>The swell.</strong> The late opening frame may be too milky. That gets tuned on the timeline, not here.</li>
+      <li><strong>The headline through the ring.</strong> At 124 px it is the loudest thing in the opening. That depends on the real site, which isn't designed yet.</li>
+    </ul>
+  </section>
+</div>
