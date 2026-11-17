@@ -18,25 +18,27 @@ export const portalConfig = {
     // centre of the screen. 0 and 0 is dead centre. It sits a touch right and up, because the
     // disc leans and is heavier at the lower left, which leaves the top right empty otherwise.
     // Then how far away it is.
-    x: 0.09,
-    y: 0.03,
+    x: 0.05,
+    y: 0.02,
     depth: 54,
     // How far above the sheet the camera looks from, and how much the horizon leans. Degrees.
     elevation: 24,
-    roll: -9,
+    // Leaning this way puts the bright near rim at the lower right and leaves the top left empty for the text.
+    roll: 9,
     // How many radians the flow winds on its way in, and how deep the sheet dips at the lip.
     swirl: 6,
     well: 0.42,
     // Share of the journey from rim to hole covered per second. 0.004 takes about four minutes.
     flow: 0.004,
     gain: 1.0,
-    brightAngle: 120,
+    brightAngle: 60,
   },
   camera: {
     fov: 40,
-    // How far the camera turns and slides toward the pointer.
-    leanDegrees: 1.5,
-    leanShift: 0.25,
+    // The parallax. The camera slides toward the pointer far more than it turns,
+    // so near grains shift more than far ones and the cloud moves within itself.
+    leanDegrees: 0.35,
+    leanShift: 1.3,
     // Higher is snappier. 3 settles in about a second.
     leanSpeed: 3,
     drift: 0.12,
@@ -44,6 +46,14 @@ export const portalConfig = {
   },
   prompt: {
     delayMs: 1200,
+  },
+  hover: {
+    // Grains near the pointer are nudged aside. radius and push are in screen heights.
+    radius: 0.11,
+    push: 0.045,
+    // How quickly the effect follows the pointer, and fades when it stops or leaves.
+    follow: 9,
+    fadeAfterMs: 1400,
   },
   drain: {
     // The way in. The grains leave the wormhole one by one and fly to a point,

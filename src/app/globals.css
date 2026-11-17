@@ -94,6 +94,29 @@ html.portal-locked body {
   opacity: 1;
 }
 
+/* The words in the middle of the hole. Set in the system face: SF Pro on Apple
+   devices, which is the only place SF Pro can be used, and the closest thing elsewhere. */
+.portal-hold {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  font-weight: 400;
+  opacity: 1;
+  transition: opacity 0.4s ease-out;
+}
+
+.portal-hold[data-hidden] {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .portal-hold {
+    animation: portal-prompt-in 1.2s ease-out var(--portal-prompt-delay, 1.2s) both;
+  }
+
+  .portal-hold[data-hidden] {
+    animation: none;
+  }
+}
+
 /* One quiet line. It waits a moment, then fades in. It steps back while the hand is down. */
 .portal-prompt {
   opacity: 1;

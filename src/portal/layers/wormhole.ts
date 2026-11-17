@@ -35,6 +35,8 @@ uniform float uClock, uSpan, uInner, uOuterX, uSwirl, uWell, uThickness, uSize;
 uniform float uPixelsPerUnit, uPixelRatio, uBrightAngle, uGain;
 uniform float uDrain, uDrainCurve, uDrainFlight, uDrainTravel, uDrainRush, uAspect;
 uniform vec2 uTarget;       // where the grains drain to, in screen space: -1 to 1 on each axis
+uniform vec2 uPointer;      // where the pointer is, in the same space
+uniform float uHover, uHoverRadius, uHoverPush;
 varying float vLight;
 const float TAU = 6.2831853;
 
@@ -64,6 +66,25 @@ void main(){
   float soft = 2.6*uPixelRatio;
   float bokeh = size > soft ? soft/size : 1.;            // close to the lens they swell and go faint
 
+  // Two rolls of the dice per grain, from where it sits in the cloud.
+  float roll = fract(sin(dot(position.xy, vec2(12.9898, 78.233)))*43758.5453);
+  float bend = fract(sin(dot(position.xy, vec2(39.3468, 11.135)))*24634.6345)-0.5;
+
+  // The pointer. Grains near it are nudged out of its way, each by its own
+  // amount and a little sideways, and catch a bit more light. The rest of
+  // the wormhole does not move.
+  float stirred = 1.;
+  if (uHover > 0.) {
+    vec2 screen = gl_Position.xy/gl_Position.w;
+    vec2 off = (screen-uPointer)*vec2(uAspect, 1.);
+    float d = length(off);
+    float near = exp(-d*d/(uHoverRadius*uHoverRadius))*uHover;
+    vec2 out2 = d > 1e-4 ? off/d : vec2(0.);
+    vec2 push = out2*(0.35+1.3*roll) + vec2(-out2.y, out2.x)*bend*1.6;
+    gl_Position.xy = (screen+push*uHoverPush*near/vec2(uAspect, 1.))*gl_Position.w;
+    stirred = 1.+0.7*near;
+  }
+
   // The drain. The picture is not pulled or bent. Each grain leaves on its own,
   // at its own moment, and flies across the screen to the point. Until its turn
   // comes it stays exactly where it was. So the wormhole holds its shape and
@@ -73,9 +94,6 @@ void main(){
     vec2 screen = gl_Position.xy/gl_Position.w;
     vec2 away = (screen-uTarget)*vec2(uAspect, 1.);
     float far = length(away);
-    // Two rolls of the dice per grain, from where it sits in the cloud.
-    float roll = fract(sin(dot(position.xy, vec2(12.9898, 78.233)))*43758.5453);
-    float bend = fract(sin(dot(position.xy, vec2(39.3468, 11.135)))*24634.6345)-0.5;
     // When it leaves: a trickle first, then more and more. Grains near the point go a little sooner.
     float leave = (1.-uDrainFlight)*(0.82*pow(roll, 0.65)+0.18*clamp(far/1.6, 0., 1.));
     float e = clamp((uDrain-leave)/uDrainFlight, 0., 1.);
@@ -97,7 +115,7 @@ void main(){
   float side = 0.58+0.42*pow(max(0.5+0.5*cos(theta-uBrightAngle), 0.), 1.5);   // one side burns brighter
   float ends = smoothstep(0., 0.015, k)*(1.-smoothstep(0.93, 1., k));
   float tooNear = smoothstep(2.5, 9., distance);
-  vLight = uGain*light*side*ends*(0.55+2.6*glint)*shrink*bokeh*tooNear*gone*(spray ? 0.55 : 1.);
+  vLight = uGain*light*side*ends*(0.55+2.6*glint)*shrink*bokeh*tooNear*gone*stirred*(spray ? 0.55 : 1.);
 }
 `;
 
@@ -166,6 +184,10 @@ export class Wormhole {
         uDrainRush: { value: 3 },
         uAspect: { value: 1 },
         uTarget: { value: new Vector2() },
+        uPointer: { value: new Vector2() },
+        uHover: { value: 0 },
+        uHoverRadius: { value: 0.2 },
+        uHoverPush: { value: 0.05 },
       },
     });
     this.points = new Points(new BufferGeometry(), this.material);
@@ -197,6 +219,8 @@ export class Wormhole {
     u.uDrainFlight.value = config.drain.flight;
     u.uDrainTravel.value = config.drain.travel;
     u.uDrainRush.value = config.drain.rush;
+    u.uHoverRadius.value = config.hover.radius;
+    u.uHoverPush.value = config.hover.push;
     this.group.rotation.set((w.elevation * Math.PI) / 180, 0, (w.roll * Math.PI) / 180);
 
     // Phones draw about a third as many points, each a little brighter to keep the same weight.
@@ -239,6 +263,12 @@ export class Wormhole {
   setDrain(amount: number, x: number, y: number) {
     this.material.uniforms.uDrain.value = amount;
     this.material.uniforms.uTarget.value.set(x, y);
+  }
+
+  /** amount runs 0 to 1. x and y are where the pointer is on screen, -1 to 1, y up. */
+  setHover(amount: number, x: number, y: number) {
+    this.material.uniforms.uHover.value = amount;
+    this.material.uniforms.uPointer.value.set(x, y);
   }
 
   /** How far below the far sheet the lip of the hole sits. */

@@ -30,6 +30,7 @@ export function PortalEntry() {
   const destinationRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const touchStart = useRef<number | null>(null);
+  const labelRef = useRef<HTMLParagraphElement>(null);
 
   // What is under the cover is out of reach until the site opens.
   useEffect(() => {
@@ -79,7 +80,7 @@ export function PortalEntry() {
 
       const scene = new PortalScene(canvas, portalConfig);
       sceneRef.current = scene;
-      scene.setElements(coverRef.current, destinationRef.current);
+      scene.setElements(coverRef.current, destinationRef.current, labelRef.current);
       scene.onReady = () => setReady(true);
       scene.onPhase = (next) => {
         setPhase(next);
@@ -189,6 +190,7 @@ export function PortalEntry() {
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          onPointerLeave={() => sceneRef.current?.clearPointer()}
           style={{ "--portal-prompt-delay": `${portalConfig.prompt.delayMs}ms` } as CSSProperties}
         >
           <canvas
@@ -197,22 +199,32 @@ export function PortalEntry() {
             className="portal-canvas absolute inset-0 size-full touch-none"
             data-ready={ready || undefined}
           />
-          {/* [PLACEHOLDER] wording, for Vedant to confirm. The name sits exactly where the
-              site's own nav puts it, so it holds still when the site comes up. */}
-          <div className="pointer-events-none absolute left-0 top-0 px-6 py-5 text-sm md:px-10">
-            <p className="font-medium text-[#efe9dd]">Vedant Vaibhav</p>
-            <p className="mt-1 font-mono text-[12px] tracking-[0.06em] text-[#e8ebf5]/55">
+          {/* [PLACEHOLDER] wording, for Vedant to confirm. Top left, in the empty part of the frame. */}
+          <div className="pointer-events-none absolute left-0 top-0 px-6 pb-10 pt-10 md:px-12 md:pt-14">
+            <p className="text-[clamp(2rem,4.4vw,4rem)] font-medium leading-[1.02] tracking-[-0.03em] text-[#efe9dd]">
+              Vedant Vaibhav
+            </p>
+            <p className="mt-5 font-mono text-[clamp(0.8rem,1.1vw,1rem)] tracking-[0.04em] text-[#e8ebf5]/60">
               Senior Product Designer at ShopOS, Bangalore
             </p>
           </div>
+          {/* [PLACEHOLDER] wording. In the middle of the hole, set in the system face (SF Pro on Apple devices). */}
+          <p
+            ref={labelRef}
+            className="portal-hold pointer-events-none absolute left-0 top-0 whitespace-nowrap text-[15px] tracking-[0.01em] text-[#efe9dd]/75"
+            data-hidden={phase !== "idle" || undefined}
+          >
+            <span className="portal-fine">Press and hold</span>
+            <span className="portal-coarse">Tap and hold</span>
+          </p>
           {/* [PLACEHOLDER] wording, for Vedant to confirm. */}
           <p
-            className="portal-prompt pointer-events-none absolute inset-x-0 bottom-[9.5svh] isolate text-center font-mono text-[13px] tracking-[0.12em] text-[#e8ebf5]/70"
+            className="portal-prompt pointer-events-none absolute inset-x-0 bottom-[7svh] isolate text-center font-mono text-[13px] tracking-[0.12em] text-[#e8ebf5]/70"
             data-first
             data-hidden={phase !== "idle" || undefined}
           >
-            <span className="portal-fine">Scroll, or hold the dark.</span>
-            <span className="portal-coarse">Swipe up, or hold the dark.</span>
+            <span className="portal-fine">Scroll</span>
+            <span className="portal-coarse">Swipe up</span>
           </p>
           <button
             type="button"

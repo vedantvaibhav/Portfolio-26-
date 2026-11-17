@@ -89,6 +89,13 @@ export class PortalScene {
   private settle = 3;
   private cover: HTMLElement | null = null;
   private destination: HTMLElement | null = null;
+  private label: HTMLElement | null = null;
+  /** Where the pointer is, eased, and how strongly the grains feel it. */
+  private hoverAt = new Vector2();
+  private hoverTo = new Vector2();
+  private hover = 0;
+  private hoverUntil = 0;
+  private holeAt = new Vector2();
 
   // Scratch values, reused.
   private axis = new Vector3();
@@ -144,14 +151,24 @@ export class PortalScene {
   }
 
   /** The cover fades to show the site. The destination settles into place as it does. */
-  setElements(cover: HTMLElement | null, destination: HTMLElement | null) {
+  setElements(cover: HTMLElement | null, destination: HTMLElement | null, label: HTMLElement | null) {
     this.cover = cover;
     this.destination = destination;
+    this.label = label;
   }
 
   /** Pointer position, -1 to 1 on each axis, y up. Ignored once the way in has started. */
   setPointer(x: number, y: number) {
-    if (this.phase === "idle") this.pointer.set(x, y);
+    if (this.phase !== "idle") return;
+    this.pointer.set(x, y);
+    // The grains feel the pointer while it moves, and for a moment after.
+    this.hoverTo.set(x, y);
+    this.hoverUntil = performance.now() + this.config.hover.fadeAfterMs;
+  }
+
+  /** The pointer left the page. */
+  clearPointer() {
+    this.hoverUntil = 0;
   }
 
   // ---- the way in ----
@@ -304,6 +321,20 @@ export class PortalScene {
       this.lean.y * c.leanShift + Math.sin(t * 0.083 + 1.3) * c.drift,
       Math.sin(t * 0.19) * c.breathe,
     );
+
+    // The grains near the pointer step aside. It fades when the pointer rests, leaves, or the way in starts.
+    const feel = this.phase === "idle" && performance.now() < this.hoverUntil ? 1 : 0;
+    this.hover += (feel - this.hover) * (1 - Math.exp(-dt * 4));
+    this.hoverAt.lerp(this.hoverTo, 1 - Math.exp(-dt * this.config.hover.follow));
+    this.wormhole.setHover(this.hover * this.motion, this.hoverAt.x, this.hoverAt.y);
+
+    // The words in the middle of the hole stay in the middle of the hole as the camera leans.
+    if (this.label) {
+      this.holeOnScreen(this.holeAt);
+      const x = ((this.holeAt.x + 1) / 2) * this.width;
+      const y = ((1 - this.holeAt.y) / 2) * this.height;
+      this.label.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%)`;
+    }
 
     // The point the grains drain to follows the hold, a little behind it.
     this.target.lerp(this.aim, 1 - Math.exp(-dt * 10));

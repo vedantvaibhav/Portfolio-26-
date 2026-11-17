@@ -51,6 +51,24 @@ for (const { name, ...options } of viewports) {
   });
   await shot("1-arrival");
 
+  // The pointer resting on the near rim: the grains there should step aside.
+  if (!options.isMobile) {
+    await page.evaluate(() => {
+      const scene = window.__portal;
+      const centre = scene.holeOnScreen(scene.aim.clone());
+      scene.setPointer(centre.x - 0.12, centre.y - 0.36);
+      scene.config.hover.fadeAfterMs = 1e9;
+    });
+    await page.waitForTimeout(2500);
+    await shot("1b-hover");
+    await page.evaluate(() => {
+      window.__portal.clearPointer();
+      window.__portal.setPointer(0, 0);
+      window.__portal.clearPointer();
+    });
+    await page.waitForTimeout(1500);
+  }
+
   // A hold in the corner of the screen is outside the hole and must do nothing.
   // A hold inside the hole, off its centre, must drain to that point.
   const hold = await page.evaluate(() => {
