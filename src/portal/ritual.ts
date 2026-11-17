@@ -5,46 +5,47 @@ import type { PortalConfig } from "./config";
 export type Fx = {
   /** 0 the wormhole at rest, 1 every grain drawn into the point and gone. */
   drain: number;
-  /** Opacity of the cover. It fades to show the site, which sits on the same black. */
+  /** 0 the page's text hidden, 1 fully there. It comes up while the grains are still leaving. */
+  reveal: number;
+  /** Opacity of the cover. Only the reduced motion path fades it. */
   cover: number;
-  /** 0 the page slightly enlarged, 1 settled. */
-  settle: number;
 };
 
 export function restFx(): Fx {
-  return { drain: 0, cover: 1, settle: 0 };
+  return { drain: 0, reveal: 0, cover: 1 };
 }
 
 type Hooks = { onGone: () => void; onDone: () => void; onReturned: () => void };
 
 /**
- * The master timeline: the grains drain to a point, then the site appears on
- * the black they leave. It is built paused. Playing it forward is the way in;
- * reversing it before the "gone" label is letting go of a hold.
+ * The master timeline: the grains drain to a point, and the text of the page
+ * comes up on the black as they go. It is built paused. Playing it forward is
+ * the way in; reversing it before the "gone" label is letting go of a hold,
+ * which takes the text away again with it.
  */
 export function buildDrain(fx: Fx, config: PortalConfig, hooks: Hooks) {
   const drain = config.drain.ms / 1000;
-  const appear = config.appear.ms / 1000;
+  const from = drain * config.reveal.from;
+  const to = drain * config.reveal.to;
   const tl = gsap.timeline({ paused: true, onComplete: hooks.onDone, onReverseComplete: hooks.onReturned });
 
   // Each grain eases on its own in the shader, so the clock itself runs evenly.
-  tl.to(fx, { drain: 1, duration: drain, ease: "none" }, 0);
-
-  const pause = config.appear.pauseMs / 1000;
-  tl.addLabel("gone", drain)
+  tl.to(fx, { drain: 1, duration: drain, ease: "none" }, 0)
+    .to(fx, { reveal: 1, duration: to - from, ease: "sine.inOut" }, from)
+    .addLabel("gone", drain)
     .call(hooks.onGone, undefined, "gone")
-    .to(fx, { cover: 0, duration: appear, ease: "sine.inOut" }, `gone+=${pause}`)
-    .to(fx, { settle: 1, duration: appear, ease: "power2.out" }, `gone+=${pause}`);
+    // A short beat with everything in place before the entry steps aside.
+    .to({}, { duration: config.reveal.tailMs / 1000 }, "gone");
 
   return tl;
 }
 
-/** Reduced motion: nothing moves. The site crossfades in. */
+/** Reduced motion: nothing moves. The wormhole fades and the text fades in. */
 export function buildReducedDrain(fx: Fx, config: PortalConfig, hooks: Hooks) {
   const fade = config.reduced.crossfadeMs / 1000;
   const tl = gsap.timeline({ paused: true, onComplete: hooks.onDone, onReverseComplete: hooks.onReturned });
   tl.addLabel("gone", 0)
     .call(hooks.onGone, undefined, 0)
-    .to(fx, { cover: 0, settle: 1, duration: fade, ease: "none" }, 0);
+    .to(fx, { cover: 0, reveal: 1, duration: fade, ease: "none" }, 0);
   return tl;
 }

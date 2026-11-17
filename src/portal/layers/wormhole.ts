@@ -271,6 +271,11 @@ export class Wormhole {
     this.material.uniforms.uPointer.value.set(x, y);
   }
 
+  /** True once the point cloud has been built and handed to the GPU. */
+  get arrived() {
+    return this.total > 0;
+  }
+
   /** How far below the far sheet the lip of the hole sits. */
   get lipDepth() {
     return this.well;

@@ -64,9 +64,14 @@ body {
 /*
   The Portal cover sits above the whole page. It only exists when scripting is
   on, so a visitor without JavaScript lands straight on the site.
+
+  It is laid over the page with "screen": black in the entry adds nothing, so
+  the page's own black shows through and its text can come up underneath the
+  grains while they are still leaving.
 */
 .portal-cover {
   display: none;
+  mix-blend-mode: screen;
 }
 
 @media (scripting: enabled) {
@@ -75,46 +80,67 @@ body {
   }
 }
 
-/* While the entry plays, the page behind it holds still. The destination is
-   scaled up during the opening, and must not make the page wider. */
+/* While the entry plays, the page behind it holds still. */
 html.portal-locked,
 html.portal-locked body {
   overflow: hidden;
   overscroll-behavior: none;
+  background: #000;
 }
 
+/* And its text stays hidden until a hold reveals it. --portal-reveal runs 0 to 1. */
+html.portal-locked [data-site-chrome],
+html.portal-locked .portal-revealed {
+  opacity: var(--portal-reveal, 0);
+}
 
-/* The 3D fades in over the dark gradient once its first frame is drawn. */
+html.portal-locked .portal-revealed {
+  transform-origin: 0 0;
+  transform: scale(calc(1 + var(--portal-reveal-grow, 0.03) * (1 - var(--portal-reveal, 0))));
+}
+
+/* On the home page the name is already large in the corner, so the nav does not repeat it. */
+html.portal-home [data-site-chrome] > a {
+  visibility: hidden;
+}
+
+/* The wormhole fades in once the count has reached 100. */
 .portal-canvas {
   opacity: 0;
-  transition: opacity 1.4s ease-out;
+  transition: opacity 1.6s ease-out;
 }
 
 .portal-canvas[data-ready] {
   opacity: 1;
 }
 
-/* The words in the middle of the hole. Set in the system face: SF Pro on Apple
-   devices, which is the only place SF Pro can be used, and the closest thing elsewhere. */
-.portal-hold {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-  font-weight: 400;
-  opacity: 1;
-  transition: opacity 0.4s ease-out;
+/* The loading count: the only thing on a black screen. */
+.portal-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+  transition: opacity 0.5s ease-out;
 }
 
-.portal-hold[data-hidden] {
+.portal-count[data-hidden] {
   opacity: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .portal-hold {
-    animation: portal-prompt-in 1.2s ease-out var(--portal-prompt-delay, 1.2s) both;
-  }
+/* Where to hold. Invisible until a press lands outside the hole, then it is animated from script. */
+.portal-where {
+  width: 46px;
+  height: 46px;
+}
 
-  .portal-hold[data-hidden] {
-    animation: none;
-  }
+.portal-where svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+.portal-where circle {
+  stroke: #efe9dd;
+  stroke-width: 1.5;
 }
 
 /* The ring around the pointer while the screen is held. --hold runs 0 to 1. */
@@ -150,34 +176,12 @@ html.portal-locked body {
   cursor: none;
 }
 
-/* A finger hides what is under it, so the ring is drawn wider on touch screens. */
+/* A finger hides what is under it, so both rings are drawn wider on touch screens. */
 @media (pointer: coarse) {
-  .portal-ring {
+  .portal-ring,
+  .portal-where {
     width: 92px;
     height: 92px;
-  }
-
-  .portal-fine {
-    display: none;
-  }
-}
-
-.portal-coarse {
-  display: none;
-}
-
-@media (pointer: coarse) {
-  .portal-coarse {
-    display: inline;
-  }
-}
-
-@keyframes portal-prompt-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }
 

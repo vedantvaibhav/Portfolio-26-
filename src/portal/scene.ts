@@ -23,7 +23,7 @@ export type FrameStats = {
 /**
  * idle       the wormhole, waiting
  * draining   the grains are being drawn into a point
- * appearing  the frame is black and the site is coming up on it
+ * appearing  the grains are gone and the text is in place; a short beat before the entry steps aside
  * done       the site is open; the scene can be torn down
  */
 export type Phase = "idle" | "draining" | "appearing" | "done";
@@ -47,6 +47,8 @@ export class PortalScene {
   onStats?: (stats: FrameStats) => void;
   /** Called once, after the first frame is on screen. */
   onReady?: () => void;
+  /** Called once, when the point cloud has arrived and everything is in place. */
+  onLoaded?: () => void;
   onPhase?: (phase: Phase) => void;
 
   private renderer: WebGLRenderer;
@@ -61,6 +63,7 @@ export class PortalScene {
   private raf = 0;
   private running = false;
   private ready = false;
+  private loaded = false;
   private lastTime = 0;
   private elapsed = 0;
   private clock = 0;
@@ -88,7 +91,6 @@ export class PortalScene {
   private fastFor = 0;
   private settle = 3;
   private cover: HTMLElement | null = null;
-  private destination: HTMLElement | null = null;
   private label: HTMLElement | null = null;
   /** The ring around the pointer that fills while the screen is held. */
   private ring: HTMLElement | null = null;
@@ -154,14 +156,8 @@ export class PortalScene {
   }
 
   /** The cover fades to show the site. The destination settles into place as it does. */
-  setElements(
-    cover: HTMLElement | null,
-    destination: HTMLElement | null,
-    label: HTMLElement | null,
-    ring: HTMLElement | null,
-  ) {
+  setElements(cover: HTMLElement | null, label: HTMLElement | null, ring: HTMLElement | null) {
     this.cover = cover;
-    this.destination = destination;
     this.label = label;
     this.ring = ring;
   }
@@ -184,7 +180,7 @@ export class PortalScene {
 
   /** A scroll: drain into the centre of the hole. It cannot be called back. */
   go() {
-    if (this.phase === "appearing" || this.phase === "done") return;
+    if (!this.loaded || this.phase === "appearing" || this.phase === "done") return;
     if (this.phase === "idle") {
       this.holeOnScreen(this.aim);
       this.target.copy(this.aim);
@@ -200,7 +196,7 @@ export class PortalScene {
    * nothing, if the point is not inside the hole.
    */
   hold(x: number, y: number) {
-    if (this.phase === "appearing" || this.phase === "done" || this.committed) return false;
+    if (!this.loaded || this.phase === "appearing" || this.phase === "done" || this.committed) return false;
     if (!this.insideHole(x, y)) return false;
     this.aim.set((x / this.width) * 2 - 1, 1 - (y / this.height) * 2);
     if (this.phase === "idle") this.target.copy(this.aim);
@@ -239,7 +235,6 @@ export class PortalScene {
         onGone: () => {
           this.committed = true;
           this.holding = false;
-          this.timeline?.timeScale(1); // the site appears at its own pace, however it was reached
           this.setPhase("appearing");
         },
         onDone: () => this.finish(),
@@ -283,12 +278,7 @@ export class PortalScene {
   }
 
   private finish() {
-    this.clearDestination();
     this.setPhase("done");
-  }
-
-  private clearDestination() {
-    if (this.destination) this.destination.style.transform = "";
   }
 
   /** Back to the start. Used when the window changes shape mid way. */
@@ -297,7 +287,6 @@ export class PortalScene {
     this.timeline = null;
     this.committed = false;
     this.fx = restFx();
-    this.clearDestination();
     if (this.cover) this.cover.style.opacity = "";
     this.setPhase("idle");
   }
@@ -321,7 +310,7 @@ export class PortalScene {
   }
 
   update(dt: number, elapsed: number) {
-    const { camera: c, drain, appear, wormhole: hole } = this.config;
+    const { camera: c, drain, wormhole: hole } = this.config;
     const { fx } = this;
     const t = elapsed;
 
@@ -364,12 +353,10 @@ export class PortalScene {
     this.wormhole.update(dt * this.motion, dt, hole.flow * (1 + fx.drain * fx.drain * fx.drain * drain.pullBoost), 1);
     this.final.uniforms.uClock.value = this.clock;
 
-    // The site comes up on the black the grains leave behind.
+    // The text of the page comes up on the black as the grains leave. The page reads this value.
+    document.documentElement.style.setProperty("--portal-reveal", fx.reveal.toFixed(4));
+    document.documentElement.style.setProperty("--portal-reveal-grow", String(this.config.reveal.scale - 1));
     if (this.cover) this.cover.style.opacity = fx.cover < 1 ? String(fx.cover) : "";
-    if (this.destination && this.phase === "appearing") {
-      const scale = appear.scale + (1 - appear.scale) * fx.settle;
-      this.destination.style.transform = `scale(${scale.toFixed(4)})`;
-    }
   }
 
   resize() {
@@ -401,6 +388,8 @@ export class PortalScene {
     cancelAnimationFrame(this.raf);
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.timeline?.kill();
+    document.documentElement.style.removeProperty("--portal-reveal");
+    document.documentElement.style.removeProperty("--portal-reveal-grow");
     this.wormhole.dispose();
     this.final.dispose();
     this.composer.dispose();
@@ -439,6 +428,10 @@ export class PortalScene {
     if (!this.ready) {
       this.ready = true;
       this.onReady?.();
+    }
+    if (!this.loaded && this.wormhole.arrived) {
+      this.loaded = true;
+      this.onLoaded?.();
     }
 
     this.onStats?.({

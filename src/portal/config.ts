@@ -44,9 +44,6 @@ export const portalConfig = {
     drift: 0.12,
     breathe: 0.35,
   },
-  prompt: {
-    delayMs: 1200,
-  },
   hover: {
     // Grains near the pointer are nudged aside. radius and push are in screen heights.
     radius: 0.11,
@@ -80,12 +77,19 @@ export const portalConfig = {
     // A hold counts if it lands within this many hole radii of the centre.
     reach: 1.05,
   },
-  appear: {
-    // Once the frame is black it stays black for a moment, then the site comes up on it.
-    pauseMs: 300,
-    ms: 1500,
-    // The page starts this much larger and settles to its true size.
+  reveal: {
+    // The text of the page comes up while the grains are still leaving. These are
+    // the shares of the drain at which it starts and finishes appearing.
+    from: 0.3,
+    to: 0.92,
+    // It starts this much larger and settles to its true size as it appears.
     scale: 1.03,
+    // A short beat with everything in place before the entry steps aside.
+    tailMs: 350,
+  },
+  loading: {
+    // The count from 0 to 100 never runs faster than this, however quick the load.
+    minMs: 1700,
   },
   reduced: {
     crossfadeMs: 400,

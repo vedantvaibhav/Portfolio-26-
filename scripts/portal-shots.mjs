@@ -1,13 +1,14 @@
 // Stills of the Portal entry at every beat, for reviews.
 //
 //   pnpm dev                      (in another terminal)
-//   pnpm portal:shots m8          writes docs/portal/shots/m8/
-//   pnpm portal:shots m8 http://localhost:3001
+//   pnpm portal:shots m12         writes docs/portal/shots/m12/
+//   pnpm portal:shots m12 http://localhost:3001
 //
-// It checks the hold (inside the hole it drains to that point, outside it does
-// nothing, let go early and it comes back), then pauses the scroll version and
-// steps through it. Headless Chromium renders WebGL in software, so the FPS it
-// prints is a smoke test, not a result, and it is too slow to record video.
+// It captures the loading count, checks the hold (inside the hole it drains to
+// that point and reveals the text, outside it only shows where to hold, let go
+// early and it all comes back), then pauses the way in and steps through it.
+// Headless Chromium renders WebGL in software, so the FPS it prints is a smoke
+// test, not a result, and it is too slow to record video.
 import { chromium } from "playwright";
 import fs from "node:fs";
 import path from "node:path";
@@ -21,9 +22,8 @@ const viewports = [
   { name: "desktop", viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
   { name: "phone", viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 ];
-// Position on the master timeline, 0 to 1. With the default timings the
-// grains are all gone near 0.7.
-const beats = [["3-drain-a", 0.14], ["4-drain-b", 0.32], ["5-drain-c", 0.48], ["6-drain-d", 0.62], ["7-appearing", 0.88], ["8-arrived", 0.98]];
+// Position on the master timeline, 0 to 1. The grains are all gone near 0.9.
+const beats = [["5-drain-a", 0.25], ["6-drain-b", 0.5], ["7-drain-c", 0.7], ["8-drain-d", 0.86], ["9-arrived", 0.99]];
 
 const browser = await chromium.launch({
   args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
@@ -37,65 +37,70 @@ for (const { name, ...options } of viewports) {
   page.on("console", (message) => message.type() === "error" && errors.push(message.text()));
   const shot = (file) => page.screenshot({ path: path.join(out, `${name}-${file}.jpg`), type: "jpeg", quality: 90 });
 
-  await page.goto(`${base}/?debug`, { waitUntil: "networkidle" });
+  await page.goto(`${base}/?debug`, { waitUntil: "domcontentloaded" });
+  // The loading screen: black, and a number.
+  await page.locator(".portal-count").waitFor({ timeout: 60000 });
+  await page.waitForFunction(() => Number(document.querySelector(".portal-count").textContent) >= 20, null, { timeout: 120000 });
+  const counted = await page.locator(".portal-count").innerText();
+  await shot("1-loading");
+
   // Software rendering is slow. Stop the scene from thinning the cloud to make up for it.
-  await page.waitForFunction(() => window.__portal);
-  await page.evaluate(() => (window.__portal.config.quality.stepDownMs = 1e9));
+  await page.waitForFunction(() => window.__portal, null, { timeout: 120000 });
+  await page.evaluate(() => {
+    window.__portal.config.quality.stepDownMs = 1e9;
+  });
   await page.locator("canvas[data-ready]").waitFor({ timeout: 240000 });
-  await page.waitForFunction(() => window.__portal.wormhole.total > 0, null, { timeout: 120000 });
   await page.waitForTimeout(6000);
   const reading = (await page.locator("[data-portal-fps]").innerText()).replace(/\s+/g, " ");
+  // Words a sighted visitor can see on the wormhole. The count has faded and the skip button only shows on keyboard focus.
+  const words = await page.evaluate(() =>
+    [...document.querySelectorAll(".portal-cover *")]
+      .filter((el) => el.children.length === 0 && el.textContent.trim())
+      .filter((el) => {
+        const box = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        const shown = Number(style.opacity) > 0.05 && Number(getComputedStyle(el.parentElement).opacity) > 0.05;
+        return box.width > 2 && box.height > 2 && shown;
+      })
+      .map((el) => el.textContent.trim())
+      .join(" "),
+  );
   await page.evaluate(() => {
     document.querySelector(".lil-gui").style.display = "none";
     document.querySelector("[data-portal-fps]").style.display = "none";
   });
-  await shot("1-arrival");
+  await shot("2-arrival");
 
-  // The pointer resting on the near rim: the grains there should step aside.
-  if (!options.isMobile) {
-    await page.evaluate(() => {
-      const scene = window.__portal;
-      const centre = scene.holeOnScreen(scene.aim.clone());
-      scene.setPointer(centre.x - 0.12, centre.y - 0.36);
-      scene.config.hover.fadeAfterMs = 1e9;
-    });
-    await page.waitForTimeout(2500);
-    await shot("1b-hover");
-    await page.evaluate(() => {
-      window.__portal.clearPointer();
-      window.__portal.setPointer(0, 0);
-      window.__portal.clearPointer();
-    });
-    await page.waitForTimeout(1500);
-  }
+  // A press in the corner is outside the hole: nothing drains, and a ring shows where to hold.
+  await page.mouse.move(60, 60);
+  await page.mouse.down();
+  await page.waitForTimeout(420);
+  const outside = await page.evaluate(() => window.__portal.phase);
+  await shot("3-where-to-hold");
+  await page.mouse.up();
+  await page.waitForTimeout(1500);
 
-  // A hold in the corner of the screen is outside the hole and must do nothing.
-  // A hold inside the hole, off its centre, must drain to that point.
+  // A hold inside the hole, off its centre, must drain to that point and bring the text up.
   const hold = await page.evaluate(() => {
     const scene = window.__portal;
     const centre = scene.holeOnScreen(scene.aim.clone());
-    const x = ((centre.x + 1) / 2) * innerWidth - innerWidth * 0.1;
+    const x = ((centre.x + 1) / 2) * innerWidth - innerWidth * 0.08;
     const y = ((1 - centre.y) / 2) * innerHeight;
-    return { outside: scene.hold(4, 4), inside: scene.hold(x, y) };
-  });
-  await page.evaluate(() => {
-    window.__portal.pause(true);
-    window.__portal.timeline.progress(0.4);
-    // The hold was started from here, not by a real pointer, so put the ring where it would be.
-    const scene = window.__portal;
-    const ring = document.querySelector(".portal-ring");
-    const x = ((scene.aim.x + 1) / 2) * innerWidth;
-    const y = ((1 - scene.aim.y) / 2) * innerHeight;
-    ring.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    const inside = scene.hold(x, y);
+    scene.pause(true);
+    scene.timeline.progress(0.6);
+    document.querySelector(".portal-ring").style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    return inside;
   });
   await page.waitForTimeout(1300);
-  await shot("2-hold-off-centre");
-  // Let go early: the grains must come back.
+  await shot("4-hold");
+  // Let go early: the grains and the text must go back.
   await page.evaluate(() => {
     window.__portal.pause(false);
     window.__portal.release();
   });
   await page.waitForFunction(() => window.__portal.phase === "idle", null, { timeout: 30000 });
+  const hiddenAgain = await page.evaluate(() => getComputedStyle(document.querySelector(".portal-revealed")).opacity);
 
   for (const [file, at] of beats) {
     await page.evaluate((progress) => {
@@ -112,12 +117,17 @@ for (const { name, ...options } of viewports) {
   await page.waitForFunction(() => !document.querySelector(".portal-cover"), null, { timeout: 30000 });
   const focus = await page.evaluate(() => document.activeElement?.tagName);
 
-  const ok = hold.inside === true && hold.outside === false && focus === "H1";
-  console.log(
-    `${name}: ${reading} | hold inside the hole works: ${hold.inside} | hold outside is ignored: ${!hold.outside} | ends on the page: ${focus === "H1"}` +
-      (errors.length ? `\n  errors: ${errors.join(" | ")}` : ""),
-  );
-  if (errors.length || !ok) failed = true;
+  const checks = {
+    "count shows": Number(counted) >= 20,
+    "no words on the wormhole": words === "",
+    "press outside does not drain": outside === "idle",
+    "hold inside works": hold === true,
+    "letting go hides the text": Number(hiddenAgain) < 0.02,
+    "ends on the page": focus === "H1",
+  };
+  const bad = Object.entries(checks).filter(([, ok]) => !ok).map(([what]) => what);
+  console.log(`${name}: ${reading} | ${bad.length ? `FAILED: ${bad.join(", ")}` : "all checks pass"}` + (errors.length ? `\n  errors: ${errors.join(" | ")}` : ""));
+  if (errors.length || bad.length) failed = true;
   await page.close();
 }
 
