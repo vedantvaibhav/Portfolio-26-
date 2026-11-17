@@ -52,8 +52,8 @@ for (const { name, circle, ...options } of viewports) {
   const shot = (file) => page.screenshot({ path: path.join(out, `${name}-${file}.jpg`), type: "jpeg", quality: 90 });
 
   await page.goto(`${base}/?debug`, { waitUntil: "networkidle" });
-  await page.locator("canvas[data-ready]").waitFor({ timeout: 90000 });
-  await page.waitForTimeout(4500);
+  await page.locator("canvas[data-ready]").waitFor({ timeout: 240000 });
+  await page.waitForTimeout(9000);
   const reading = (await page.locator("[data-portal-fps]").innerText()).replace(/\s+/g, " ");
   await page.evaluate(() => {
     document.querySelector(".lil-gui").style.display = "none";

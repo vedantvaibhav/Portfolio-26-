@@ -18,30 +18,33 @@ export const portalConfig = {
   },
   stars: {
     // Stars in a 16:9 view.
-    count: 2600,
+    count: 4200,
     twinkle: 0.35,
   },
   wormhole: {
-    // Phones draw half as many.
-    grains: 260000,
-    grainSize: 0.095,
+    // Points in the cloud. About half are drawn; the rest fall in the gaps between flow lines.
+    // Phones use about a third.
+    points: 1400000,
+    pointSize: 0.055,
+    // How far points sit off the sheet, as a share of their distance from the hole.
+    thickness: 0.009,
     innerRadius: 15,
-    outerRadius: 130,
+    outerRadius: 85,
     // Where the hole sits: share of the half width and half height from the centre, and how far away.
-    x: 0.26,
-    y: 0.14,
-    depth: 56,
-    // How far above the disc the camera looks from, and how much the horizon leans. Degrees.
-    elevation: 20,
-    roll: -11,
-    // How many radians a grain winds on its way in, and how deep the sheet dips into the hole.
+    x: 0.24,
+    y: 0.16,
+    depth: 54,
+    // How far above the sheet the camera looks from, and how much the horizon leans. Degrees.
+    elevation: 24,
+    roll: -9,
+    // How many radians the flow winds on its way in, and how deep the sheet dips at the lip.
     swirl: 6,
-    well: 0.28,
-    // Share of the journey from rim to hole covered per second. 0.006 takes about three minutes.
-    flow: 0.006,
+    well: 0.42,
+    // Share of the journey from rim to hole covered per second. 0.004 takes about four minutes.
+    flow: 0.004,
     // During ignition and the opening the flow runs this many times faster.
     pullBoost: 10,
-    gain: 2.6,
+    gain: 1.0,
     brightAngle: 120,
   },
   camera: {

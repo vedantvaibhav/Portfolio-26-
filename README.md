@@ -29,10 +29,10 @@ The home page opens on a black and white wormhole, rendered in WebGL above a pla
 Open `/?debug` for the FPS meter and a panel that mirrors the config. Its timeline folder ignites the ring without drawing, pauses the opening and scrubs through it.
 
 ```bash
-pnpm portal:shots m5
+pnpm portal:shots m6
 ```
 
-That draws a circle and writes a still of every beat, desktop and phone, to `docs/portal/shots/m5/`. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
+That draws a circle and writes a still of every beat, desktop and phone, to `docs/portal/shots/m6/`. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
 
 ## Pinned versions
 

@@ -190,7 +190,7 @@ export function PortalEntry() {
           />
           <p
             key={nudge}
-            className="portal-prompt pointer-events-none absolute inset-x-0 bottom-[9.5svh] text-center font-mono text-[13px] tracking-[0.12em] text-[#e8ebf5]"
+            className="portal-prompt pointer-events-none absolute inset-x-0 bottom-[9.5svh] isolate text-center font-mono text-[13px] tracking-[0.12em] text-[#e8ebf5]/70"
             data-first={nudge === 0 || undefined}
             data-hidden={!waiting || undefined}
             aria-live="polite"

@@ -92,8 +92,21 @@ body {
 
 /* One quiet line. It waits a moment, then fades in. It steps back while the hand is down. */
 .portal-prompt {
-  opacity: 0.7;
+  opacity: 1;
   transition: opacity 0.4s ease-out;
+}
+
+/* A soft pool of dark behind the words, so they read over the grain. */
+.portal-prompt::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(30rem, 92vw);
+  height: 9rem;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(closest-side, #000 22%, rgba(0, 0, 0, 0.78) 50%, transparent);
+  z-index: -1;
 }
 
 .portal-prompt[data-hidden] {
@@ -140,6 +153,6 @@ body {
     opacity: 0;
   }
   to {
-    opacity: 0.7;
+    opacity: 1;
   }
 }
