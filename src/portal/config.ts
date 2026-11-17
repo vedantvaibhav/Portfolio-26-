@@ -6,11 +6,6 @@
  * All numbers are starting points. Vedant tunes them by feel.
  */
 export const portalConfig = {
-  space: {
-    // Pure black. There is nothing in the frame but the wormhole.
-    deep: "#000000",
-    lift: "#000000",
-  },
   wormhole: {
     // Points in the cloud. Phones use about a third.
     points: 700000,
@@ -47,37 +42,28 @@ export const portalConfig = {
   prompt: {
     delayMs: 1200,
   },
-  dive: {
-    // Two ways in. A scroll plays the whole thing. A press and hold plays the
-    // first part for as long as it is held; let go early and it eases back.
-    //
-    // First part, the wrap: the camera rises over the hole until the tilted
-    // disc is a full circle in the middle of the screen.
-    wrapMs: 1500,
-    // Second part, the fall: straight down the throat.
-    fallMs: 1300,
-    // How high over the hole the wrap ends, and how far down the throat the fall ends. In hole radii.
-    height: 4.6,
-    depth: 0.9,
-    // The lens widens as it falls, which is most of the feeling of speed. Degrees.
-    fovEnd: 76,
-    // The flow of the grains runs this many times faster by the end of the fall.
-    pullBoost: 16,
-    // Strength of the streaks that rush past in the throat.
-    streaks: 1,
-    // Letting go early plays the wrap backwards this many times faster.
-    returnSpeed: 1.7,
+  drain: {
+    // The way in. Every grain is drawn to one point and vanishes there, leaving
+    // black. A scroll does it at the centre of the hole. A press and hold inside
+    // the hole does it wherever the hold is, for as long as it is held; let go
+    // early and the grains come back.
+    ms: 1500,
+    // How far the grains turn around the point on the way in. Radians.
+    swirl: 2.4,
+    // How much of the way to the point they travel before they are gone. 1 is all the way, 0.3 is a slight pull.
+    travel: 1,
+    // The flow of the wormhole runs this many times faster while it drains.
+    pullBoost: 10,
+    // Letting go early plays it backwards this many times faster.
+    returnSpeed: 1.6,
+    // A hold counts if it lands within this many hole radii of the centre.
+    reach: 1.05,
   },
-  opening: {
-    // The site opens from a point of light at the bottom of the throat.
-    // It starts this far through the fall and takes this long.
-    startAt: 0.55,
-    ms: 1100,
-    rim: 0.8,
-    destinationScale: 1.35,
-    destinationBlurPx: 10,
-    // Share of the opening that passes before the page starts to settle.
-    settleFrom: 0.3,
+  appear: {
+    // Once the frame is black, the site comes up on that same black.
+    ms: 800,
+    // The page starts this much larger and settles to its true size.
+    scale: 1.03,
   },
   reduced: {
     crossfadeMs: 400,

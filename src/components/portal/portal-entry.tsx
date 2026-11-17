@@ -9,9 +9,11 @@ const SWIPE_PX = 36;
 
 /**
  * The entry to the site. A full screen canvas sits above the destination and
- * shows the wormhole. One scroll, or a press and hold, sends the camera over
- * the hole and down it, and the site opens at the bottom. The scene module is
- * loaded on demand so Three.js stays out of the first bundle.
+ * shows the wormhole. One scroll draws every grain into the centre of the
+ * hole, where it vanishes. A press and hold inside the hole does the same
+ * wherever the hold is. The frame is left black, and the site comes up on
+ * that same black. The scene module is loaded on demand so Three.js stays out
+ * of the first bundle.
  *
  * Nothing is on screen but the wormhole and one line of type. The arrow keys,
  * Space and Enter do the same as a scroll, and a skip button appears on
@@ -47,7 +49,7 @@ export function PortalEntry() {
 
   /** Go in. Without the scene (it failed to load, or has not yet), just open the site. */
   const go = () => {
-    if (sceneRef.current) sceneRef.current.begin("scroll");
+    if (sceneRef.current) sceneRef.current.go();
     else setStage("entered");
   };
 
@@ -57,7 +59,7 @@ export function PortalEntry() {
       if (!["Enter", " ", "ArrowDown", "PageDown"].includes(event.key)) return;
       if (event.target instanceof HTMLElement && event.target.closest(".lil-gui, button")) return;
       event.preventDefault();
-      if (sceneRef.current) sceneRef.current.begin("scroll");
+      if (sceneRef.current) sceneRef.current.go();
       else setStage("entered");
     };
     window.addEventListener("keydown", onKey);
@@ -124,12 +126,12 @@ export function PortalEntry() {
     if (event.deltaY > 2) go();
   };
 
-  // Press and hold: the wormhole wraps into a circle for as long as it is held.
+  // Press and hold inside the hole: the grains drain to that point for as long as it is held.
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     touchStart.current = event.pointerType === "mouse" ? null : event.clientY;
-    sceneRef.current?.begin("hold");
+    sceneRef.current?.hold(event.clientX, event.clientY);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -138,8 +140,9 @@ export function PortalEntry() {
     // On a touch screen, a swipe upward is the scroll.
     if (touchStart.current !== null && touchStart.current - event.clientY > SWIPE_PX) {
       touchStart.current = null;
-      scene.begin("scroll");
+      scene.go();
     }
+    if (event.buttons & 1 || event.pointerType === "touch") scene.holdMove(event.clientX, event.clientY);
     // Touch has no hover. The lean is for pointers that can rest on the page.
     if (event.pointerType !== "touch") {
       scene.setPointer((event.clientX / window.innerWidth) * 2 - 1, 1 - (event.clientY / window.innerHeight) * 2);
@@ -153,14 +156,11 @@ export function PortalEntry() {
 
   return (
     <>
-      {/* [PLACEHOLDER] destination. The real site replaces this. */}
+      {/* [PLACEHOLDER] destination. The real site replaces this. It sits on the same black as the entry. */}
       <div
         ref={destinationRef}
-        className="relative grid min-h-svh place-items-center overflow-hidden bg-[#141311] text-[#efe9dd]"
+        className="relative grid min-h-svh place-items-center overflow-hidden bg-black text-[#efe9dd]"
       >
-        <div className="portal-blob left-[-14vmax] top-[-18vmax] size-[62vmax] bg-[radial-gradient(circle_at_40%_40%,#f6cf7c,transparent_68%)]" />
-        <div className="portal-blob right-[-16vmax] top-[6vmax] size-[58vmax] bg-[radial-gradient(circle,#f1a98c,transparent_66%)]" />
-        <div className="portal-blob bottom-[-40vmax] left-[12vmax] size-[70vmax] bg-[radial-gradient(circle_at_50%_40%,#4a5b93,transparent_66%)]" />
         <div className="relative flex flex-col items-center gap-4 px-6 text-center">
           <p className="font-mono text-[13px] tracking-[0.08em] opacity-80">Vedant Vaibhav</p>
           <h1
@@ -183,7 +183,7 @@ export function PortalEntry() {
       {stage === "ritual" && (
         <div
           ref={coverRef}
-          className="portal-cover fixed inset-0 z-[60] touch-none select-none"
+          className="portal-cover fixed inset-0 z-[60] touch-none select-none bg-black"
           onWheel={onWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -191,16 +191,9 @@ export function PortalEntry() {
           onPointerCancel={onPointerUp}
           style={{ "--portal-prompt-delay": `${portalConfig.prompt.delayMs}ms` } as CSSProperties}
         >
-          {/* Shown at once, before the 3D is ready. Gone before the ring opens, so the page can show through. */}
-          {phase !== "opening" && phase !== "done" && (
-            <div
-              className="absolute inset-0"
-              style={{ background: `linear-gradient(160deg, ${portalConfig.space.lift}, ${portalConfig.space.deep} 70%)` }}
-            />
-          )}
           <canvas
             ref={canvasRef}
-            aria-label="A black screen with a wormhole: white grains turn slowly around a dark hole and fall into it. Scroll, or press and hold, to fall in and open the site. Enter does the same."
+            aria-label="A black screen with a wormhole: white grains turn slowly around a dark hole and fall into it. Scroll, or press and hold inside the hole, and the grains drain away to show the site. Enter does the same."
             className="portal-canvas absolute inset-0 size-full touch-none"
             data-ready={ready || undefined}
           />
@@ -210,8 +203,8 @@ export function PortalEntry() {
             data-first
             data-hidden={phase !== "idle" || undefined}
           >
-            <span className="portal-fine">Scroll or hold.</span>
-            <span className="portal-coarse">Swipe up or hold.</span>
+            <span className="portal-fine">Scroll, or hold the dark.</span>
+            <span className="portal-coarse">Swipe up, or hold the dark.</span>
           </p>
           <button
             type="button"

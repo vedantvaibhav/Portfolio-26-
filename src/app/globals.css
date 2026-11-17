@@ -83,10 +83,6 @@ html.portal-locked body {
   overscroll-behavior: none;
 }
 
-.portal-blob {
-  position: absolute;
-  border-radius: 50%;
-}
 
 /* The 3D fades in over the dark gradient once its first frame is drawn. */
 .portal-canvas {

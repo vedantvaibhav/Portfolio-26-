@@ -12,7 +12,7 @@ export function createDebug(config: PortalConfig, scene: PortalScene) {
   const gui = new GUI({ title: "Portal" });
 
   const timeline = {
-    "go in": () => scene.begin("scroll"),
+    "go in": () => scene.go(),
     paused: false,
     progress: 0,
   };

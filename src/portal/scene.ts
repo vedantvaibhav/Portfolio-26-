@@ -1,4 +1,4 @@
-import { HalfFloatType, PerspectiveCamera, Quaternion, Scene, Vector2, Vector3, WebGLRenderer } from "three";
+import { HalfFloatType, PerspectiveCamera, Scene, Vector2, Vector3, WebGLRenderer } from "three";
 import {
   BloomEffect,
   EffectComposer,
@@ -9,9 +9,9 @@ import {
   ToneMappingMode,
 } from "postprocessing";
 import type { PortalConfig } from "./config";
-import { RushEffect, createFinalMaterial } from "./effects";
+import { createFinalMaterial } from "./effects";
 import { Wormhole } from "./layers/wormhole";
-import { buildDive, buildReducedDive, restFx, type Fx } from "./ritual";
+import { buildDrain, buildReducedDrain, restFx, type Fx } from "./ritual";
 
 export type FrameStats = {
   fps: number;
@@ -21,18 +21,15 @@ export type FrameStats = {
 };
 
 /**
- * idle      the wormhole, waiting
- * wrapping  the camera is rising over the hole; the disc is becoming a circle
- * falling   past the point of no return, on the way down the throat
- * opening   the site is growing out of the light at the bottom
- * done      the site is open; the scene can be torn down
+ * idle       the wormhole, waiting
+ * draining   the grains are being drawn into a point
+ * appearing  the frame is black and the site is coming up on it
+ * done       the site is open; the scene can be torn down
  */
-export type Phase = "idle" | "wrapping" | "falling" | "opening" | "done";
+export type Phase = "idle" | "draining" | "appearing" | "done";
 
 /** Shares of the point cloud to draw, from full quality down. */
 const SHARES = [1, 0.66, 0.44, 0.28];
-
-const smooth = (t: number) => t * t * (3 - 2 * t);
 
 /**
  * The Portal scene. Vanilla Three.js on purpose: this class owns the frame
@@ -43,8 +40,8 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
  *   resize()    match the canvas to its box
  *   teardown()  stop and free everything
  *
- * It also runs the way in: begin("scroll") plays it through, begin("hold")
- * and release() play it for as long as the screen is held.
+ * It also runs the way in: go() drains the wormhole into the centre of the
+ * hole, hold() and release() drain it into wherever the screen is held.
  */
 export class PortalScene {
   onStats?: (stats: FrameStats) => void;
@@ -58,7 +55,6 @@ export class PortalScene {
   private camera: PerspectiveCamera;
 
   private wormhole = new Wormhole();
-  private rush = new RushEffect();
   private bloom: BloomEffect;
   private final = createFinalMaterial();
 
@@ -81,8 +77,11 @@ export class PortalScene {
   private phase: Phase = "idle";
   private fx: Fx = restFx();
   private timeline: gsap.core.Timeline | null = null;
-  /** True once nothing can call it back: a scroll, or a hold that reached the fall. */
+  /** True once nothing can call it back: a scroll, or a hold that drained everything. */
   private committed = false;
+  /** Where the grains drain to, in screen space: -1 to 1, y up. It eases toward `aim`. */
+  private target = new Vector2();
+  private aim = new Vector2();
   /** Which step of SHARES is in use, and how long the frame time has sat on either side of the limits. */
   private tier = 0;
   private slowFor = 0;
@@ -91,15 +90,11 @@ export class PortalScene {
   private cover: HTMLElement | null = null;
   private destination: HTMLElement | null = null;
 
-  // Scratch values for the camera path, reused every frame.
+  // Scratch values, reused.
   private axis = new Vector3();
-  private upEnd = new Vector3();
-  private restPosition = new Vector3();
-  private restTurn = new Quaternion();
-  private lookTurn = new Quaternion();
-  private from = new Vector3();
-  private to = new Vector3();
-  private rig = new PerspectiveCamera();
+  private lip = new Vector3();
+  private origin = new Vector3();
+  private ray = new Vector3();
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -107,14 +102,12 @@ export class PortalScene {
   ) {
     this.renderer = new WebGLRenderer({
       canvas,
-      alpha: true, // the opening cuts a hole through to the page
-      premultipliedAlpha: true,
       antialias: false,
       depth: false,
       stencil: false,
       powerPreference: "high-performance",
     });
-    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.setClearColor(0x000000, 1);
     this.renderer.info.autoReset = false; // count draw calls across every pass
 
     this.camera = new PerspectiveCamera(config.camera.fov, 1, 0.5, 600);
@@ -123,7 +116,6 @@ export class PortalScene {
     this.bloom = new BloomEffect({ mipmapBlur: true, luminanceSmoothing: 0.2 });
     this.composer = new EffectComposer(this.renderer, { frameBufferType: HalfFloatType });
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.composer.addPass(new EffectPass(this.camera, this.rush));
     this.composer.addPass(
       new EffectPass(this.camera, this.bloom, new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL })),
     );
@@ -137,6 +129,8 @@ export class PortalScene {
   /** Re-read the config. The debug panel calls this after every change. */
   applyConfig() {
     const { config } = this;
+    this.camera.fov = config.camera.fov;
+    this.camera.updateProjectionMatrix();
     this.wormhole.apply(config, window.matchMedia("(pointer: coarse)").matches);
     this.bloom.intensity = config.film.bloom;
     this.bloom.luminanceMaterial.threshold = config.film.bloomThreshold;
@@ -149,7 +143,7 @@ export class PortalScene {
     this.motion = reduced ? 0 : 1;
   }
 
-  /** The cover fades on the reduced motion path. The destination scales and sharpens in the opening. */
+  /** The cover fades to show the site. The destination settles into place as it does. */
   setElements(cover: HTMLElement | null, destination: HTMLElement | null) {
     this.cover = cover;
     this.destination = destination;
@@ -162,36 +156,41 @@ export class PortalScene {
 
   // ---- the way in ----
 
-  /**
-   * "scroll" plays the whole thing and cannot be called back.
-   * "hold" plays it for as long as the screen is held: see release().
-   */
-  begin(mode: "scroll" | "hold") {
-    if (this.phase === "falling" || this.phase === "opening" || this.phase === "done") return;
-    if (!this.timeline) {
-      const hooks = {
-        onFall: () => {
-          this.committed = true;
-          this.setPhase("falling");
-        },
-        onOpen: () => this.setPhase("opening"),
-        onDone: () => this.finish(),
-        onReturned: () => this.setPhase("idle"),
-      };
-      this.timeline = this.motion
-        ? buildDive(this.fx, this.config, hooks)
-        : buildReducedDive(this.fx, this.config, hooks);
+  /** A scroll: drain into the centre of the hole. It cannot be called back. */
+  go() {
+    if (this.phase === "appearing" || this.phase === "done") return;
+    if (this.phase === "idle") {
+      this.holeOnScreen(this.aim);
+      this.target.copy(this.aim);
     }
-    if (mode === "scroll") this.committed = true;
-    this.pointer.copy(this.lean); // hold the camera's lean where it is
-    if (this.phase === "idle") this.setPhase("wrapping");
-    this.timeline.timeScale(1).play();
+    this.committed = true;
+    this.play();
   }
 
-  /** The hold was let go. Before the fall, everything eases back to rest. After it, nothing changes. */
+  /**
+   * A press: drain into that point for as long as it is held. Positions are
+   * CSS pixels from the top left of the canvas. Returns false, and does
+   * nothing, if the point is not inside the hole.
+   */
+  hold(x: number, y: number) {
+    if (this.phase === "appearing" || this.phase === "done" || this.committed) return false;
+    if (!this.insideHole(x, y)) return false;
+    this.aim.set((x / this.width) * 2 - 1, 1 - (y / this.height) * 2);
+    if (this.phase === "idle") this.target.copy(this.aim);
+    this.play();
+    return true;
+  }
+
+  /** The hold moved. The point follows it while it stays inside the hole. */
+  holdMove(x: number, y: number) {
+    if (this.phase !== "draining" || this.committed) return;
+    if (this.insideHole(x, y)) this.aim.set((x / this.width) * 2 - 1, 1 - (y / this.height) * 2);
+  }
+
+  /** The hold was let go. Before everything is gone, the grains come back. After, nothing changes. */
   release() {
-    if (this.committed || this.phase !== "wrapping" || !this.timeline) return;
-    this.timeline.timeScale(this.config.dive.returnSpeed).reverse();
+    if (this.committed || this.phase !== "draining" || !this.timeline) return;
+    this.timeline.timeScale(this.config.drain.returnSpeed).reverse();
   }
 
   /** For the debug panel: hold the timeline still, or move it by hand. */
@@ -201,8 +200,55 @@ export class PortalScene {
   }
 
   scrub(progress: number) {
-    if (!this.timeline || this.phase === "idle") this.begin("scroll");
+    if (!this.timeline || this.phase === "idle") this.go();
     this.timeline?.pause().progress(progress);
+  }
+
+  private play() {
+    if (!this.timeline) {
+      const hooks = {
+        onGone: () => {
+          this.committed = true;
+          this.setPhase("appearing");
+        },
+        onDone: () => this.finish(),
+        onReturned: () => this.setPhase("idle"),
+      };
+      this.timeline = this.motion
+        ? buildDrain(this.fx, this.config, hooks)
+        : buildReducedDrain(this.fx, this.config, hooks);
+    }
+    this.pointer.copy(this.lean); // hold the camera's lean where it is
+    if (this.phase === "idle") this.setPhase("draining");
+    this.timeline.timeScale(1).play();
+  }
+
+  /** The centre of the hole's lip, in world space, and the way the hole faces. */
+  private findHole() {
+    this.axis.set(0, 1, 0).applyQuaternion(this.wormhole.group.quaternion);
+    this.lip.copy(this.wormhole.group.position).addScaledVector(this.axis, -this.wormhole.lipDepth);
+  }
+
+  /** Where the centre of the hole is on screen, -1 to 1, y up. */
+  private holeOnScreen(out: Vector2) {
+    this.findHole();
+    this.camera.updateMatrixWorld();
+    this.ray.copy(this.lip).project(this.camera);
+    return out.set(this.ray.x, this.ray.y);
+  }
+
+  /** Is this point of the screen over the black of the hole? Cast a ray and see where it meets the lip. */
+  private insideHole(x: number, y: number) {
+    this.findHole();
+    this.camera.updateMatrixWorld();
+    this.origin.setFromMatrixPosition(this.camera.matrixWorld);
+    this.ray.set((x / this.width) * 2 - 1, 1 - (y / this.height) * 2, 0.5).unproject(this.camera).sub(this.origin).normalize();
+    const facing = this.ray.dot(this.axis);
+    if (Math.abs(facing) < 1e-4) return false;
+    const distance = this.lip.clone().sub(this.origin).dot(this.axis) / facing;
+    if (distance <= 0) return false;
+    const hit = this.origin.clone().addScaledVector(this.ray, distance);
+    return hit.distanceTo(this.lip) <= this.config.wormhole.innerRadius * this.config.drain.reach;
   }
 
   private finish() {
@@ -211,10 +257,7 @@ export class PortalScene {
   }
 
   private clearDestination() {
-    if (!this.destination) return;
-    this.destination.style.transform = "";
-    this.destination.style.filter = "";
-    this.destination.style.transformOrigin = "";
+    if (this.destination) this.destination.style.transform = "";
   }
 
   /** Back to the start. Used when the window changes shape mid way. */
@@ -247,80 +290,33 @@ export class PortalScene {
   }
 
   update(dt: number, elapsed: number) {
-    const { camera: c, dive, opening, wormhole: hole } = this.config;
+    const { camera: c, drain, appear, wormhole: hole } = this.config;
     const { fx } = this;
     const t = elapsed;
 
-    // Ease toward the pointer. Frame rate independent.
+    // A slow drift, and a lean toward the pointer. Frame rate independent.
     this.lean.lerp(this.pointer, (1 - Math.exp(-dt * c.leanSpeed)) * this.motion);
-
-    // At rest: a slow drift and a lean toward the pointer.
-    const still = 1 - smooth(fx.wrap);
     const yaw = (this.lean.x * c.leanDegrees * Math.PI) / 180;
     const pitch = (this.lean.y * c.leanDegrees * Math.PI) / 180;
-    this.rig.rotation.set(pitch * still, -yaw * still, 0);
-    this.restTurn.copy(this.rig.quaternion);
-    this.restPosition.set(
-      (this.lean.x * c.leanShift + Math.sin(t * 0.11) * c.drift) * still,
-      (this.lean.y * c.leanShift + Math.sin(t * 0.083 + 1.3) * c.drift) * still,
-      Math.sin(t * 0.19) * c.breathe * still,
+    this.camera.rotation.set(pitch, -yaw, 0);
+    this.camera.position.set(
+      this.lean.x * c.leanShift + Math.sin(t * 0.11) * c.drift,
+      this.lean.y * c.leanShift + Math.sin(t * 0.083 + 1.3) * c.drift,
+      Math.sin(t * 0.19) * c.breathe,
     );
 
-    // The hole: where it is and which way it faces.
-    const centre = this.wormhole.group.position;
-    this.axis.set(0, 1, 0).applyQuaternion(this.wormhole.group.quaternion);
-    // Looking straight down the hole, "up" on screen is the far side of the disc.
-    this.upEnd.set(0, 0, -1).addScaledVector(this.axis, this.axis.z).normalize();
-
-    // The wrap swings the camera from where it rests to a point high over the
-    // hole, keeping its eye on the centre, so the tilted disc opens into a circle.
-    // The fall then takes it straight down the axis.
-    const w = smooth(fx.wrap);
-    // High enough that the whole ring fits: on a tall, narrow screen that means higher.
-    const fit = (1.3 * hole.innerRadius) / (0.8 * Math.tan((c.fov * Math.PI) / 360) * this.camera.aspect);
-    const over = Math.max(hole.innerRadius * dive.height, fit);
-    const down = this.wormhole.floorDepth * dive.depth;
-    this.from.copy(this.restPosition).sub(centre);
-    this.to.copy(this.axis).multiplyScalar(over);
-    const reach = this.from.length() + (over - this.from.length()) * w;
-    this.from.normalize().lerp(this.to.normalize(), w).normalize().multiplyScalar(reach);
-    this.camera.position.copy(centre).add(this.from);
-    this.camera.position.addScaledVector(this.axis, -(over + down) * fx.fall);
-
-    this.rig.position.copy(this.camera.position);
-    this.rig.up.set(0, 1, 0).lerp(this.upEnd, w).normalize();
-    this.to.copy(centre).addScaledVector(this.axis, -(over + down) * fx.fall - down);
-    this.rig.lookAt(this.to);
-    this.lookTurn.copy(this.rig.quaternion);
-    this.camera.quaternion.copy(this.restTurn).slerp(this.lookTurn, smooth(Math.min(1, fx.wrap * 2.5)));
-
-    // The lens widens with the fall.
-    const fov = c.fov + (dive.fovEnd - c.fov) * fx.fall * fx.fall;
-    if (Math.abs(fov - this.camera.fov) > 0.01) {
-      this.camera.fov = fov;
-      this.camera.updateProjectionMatrix();
-    }
-    const dpr = this.renderer.getPixelRatio();
-    this.wormhole.setScale((this.height * dpr) / (2 * Math.tan((this.camera.fov * Math.PI) / 360)), dpr);
-
-    // The pull speeds the whole disc up.
-    this.wormhole.update(dt * this.motion, dt, hole.flow * (1 + fx.pull * dive.pullBoost), fx.glow);
-
-    // The opening grows from the middle of the screen. Slow, then very fast:
-    // the radius grows by a constant factor per unit of `open`.
-    const corner = Math.hypot(this.width, this.height) / 2 / this.height;
-    const radius = 0.006 * Math.pow((corner * 1.3) / 0.006, fx.open);
-    this.rush.set(radius, fx.rim, fx.streaks, this.clock);
-    this.final.uniforms.uHole.value = fx.hole > 0 ? radius : 0;
+    // The point the grains drain to follows the hold, a little behind it.
+    this.target.lerp(this.aim, 1 - Math.exp(-dt * 10));
+    this.wormhole.setDrain(fx.drain, this.target.x, this.target.y);
+    // Being drawn in speeds the whole disc up.
+    this.wormhole.update(dt * this.motion, dt, hole.flow * (1 + fx.drain * drain.pullBoost), 1);
     this.final.uniforms.uClock.value = this.clock;
 
+    // The site comes up on the black the grains leave behind.
     if (this.cover) this.cover.style.opacity = fx.cover < 1 ? String(fx.cover) : "";
-    if (this.destination && this.phase === "opening" && this.motion) {
-      const scale = opening.destinationScale + (1 - opening.destinationScale) * fx.settle;
-      const blur = opening.destinationBlurPx * (1 - fx.settle);
-      this.destination.style.transformOrigin = "50% 50%";
+    if (this.destination && this.phase === "appearing") {
+      const scale = appear.scale + (1 - appear.scale) * fx.settle;
       this.destination.style.transform = `scale(${scale.toFixed(4)})`;
-      this.destination.style.filter = blur > 0.05 ? `blur(${blur.toFixed(2)}px)` : "";
     }
   }
 
@@ -342,7 +338,6 @@ export class PortalScene {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
 
-    this.rush.setBufferSize(Math.floor(width * dpr), Math.floor(height * dpr));
     this.final.uniforms.uAspect.value = width / height;
     this.layout();
 
@@ -363,10 +358,12 @@ export class PortalScene {
   /** Place the hole by screen fraction, so portrait and landscape both compose. */
   private layout() {
     const hole = this.config.wormhole;
-    const tan = Math.tan((this.config.camera.fov * Math.PI) / 360);
+    const tan = Math.tan((this.camera.fov * Math.PI) / 360);
     const halfHeight = hole.depth * tan;
     const halfWidth = halfHeight * this.camera.aspect;
+    const dpr = this.renderer.getPixelRatio();
     this.wormhole.place(hole.x * halfWidth, hole.y * halfHeight, -hole.depth);
+    this.wormhole.setScale((this.height * dpr) / (2 * tan), dpr, this.camera.aspect);
   }
 
   private tick = (now: number) => {

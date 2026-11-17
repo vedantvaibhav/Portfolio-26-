@@ -9,6 +9,7 @@ import {
   MeshBasicMaterial,
   Points,
   ShaderMaterial,
+  Vector2,
 } from "three";
 import type { PortalConfig } from "../config";
 import { NOISE, PRECISION } from "../glsl";
@@ -32,6 +33,8 @@ const VERTEX = /* glsl */ `
 attribute vec4 aLook;      // vary, dunes, glint, kind
 uniform float uClock, uSpan, uInner, uOuterX, uSwirl, uWell, uThickness, uSize;
 uniform float uPixelsPerUnit, uPixelRatio, uBrightAngle, uGain;
+uniform float uDrain, uDrainSwirl, uDrainTravel, uAspect;
+uniform vec2 uTarget;       // where the grains drain to, in screen space: -1 to 1 on each axis
 varying float vLight;
 const float TAU = 6.2831853;
 
@@ -60,6 +63,24 @@ void main(){
   if (size < smallest) { shrink = (size/smallest)*(size/smallest); size = smallest; }   // too small to draw: dim it instead
   float soft = 2.6*uPixelRatio;
   float bokeh = size > soft ? soft/size : 1.;            // close to the lens they swell and go faint
+
+  // The drain. Every grain is drawn across the screen to one point, turning as
+  // it goes, and is gone when it gets there. The ones nearest leave first.
+  float gone = 1.;
+  if (uDrain > 0.) {
+    vec2 screen = gl_Position.xy/gl_Position.w;
+    vec2 away = (screen-uTarget)*vec2(uAspect, 1.);
+    float wait = 0.45*clamp(length(away)/1.6, 0., 1.)+0.25*vary;
+    float e = clamp(uDrain*1.7-wait, 0., 1.);
+    e = e*e*(3.-2.*e);
+    e *= e;                                              // slow to leave, then quick
+    float turn = e*uDrainSwirl*(0.5+vary);
+    float cs = cos(turn), sn = sin(turn);
+    away = vec2(away.x*cs-away.y*sn, away.x*sn+away.y*cs)*(1.-e*uDrainTravel);
+    gl_Position.xy = (uTarget+away/vec2(uAspect, 1.))*gl_Position.w;
+    size *= 1.-0.6*e;
+    gone = 1.-smoothstep(0.5, 1., e);
+  }
   gl_PointSize = min(size, 20.*uPixelRatio);
 
   // The light comes from the hole. Hottest where the sheet rolls over the lip, gone down the throat.
@@ -70,7 +91,7 @@ void main(){
   float side = 0.58+0.42*pow(max(0.5+0.5*cos(theta-uBrightAngle), 0.), 1.5);   // one side burns brighter
   float ends = smoothstep(0., 0.015, k)*(1.-smoothstep(0.93, 1., k));
   float tooNear = smoothstep(2.5, 9., distance);
-  vLight = uGain*light*side*ends*(0.55+2.6*glint)*shrink*bokeh*tooNear*(spray ? 0.55 : 1.);
+  vLight = uGain*light*side*ends*(0.55+2.6*glint)*shrink*bokeh*tooNear*gone*(spray ? 0.55 : 1.);
 }
 `;
 
@@ -102,6 +123,7 @@ export class Wormhole {
   private black = new MeshBasicMaterial({ color: 0x000000, side: DoubleSide });
   private clock = 0;
   private gain = 1;
+  private well = 0;
   /** 0 until the cloud arrives, then it eases to 1. */
   private reveal = 0;
   private total = 0;
@@ -131,6 +153,11 @@ export class Wormhole {
         uPixelRatio: { value: 1 },
         uBrightAngle: { value: 0 },
         uGain: { value: 0 },
+        uDrain: { value: 0 },
+        uDrainSwirl: { value: 0 },
+        uDrainTravel: { value: 1 },
+        uAspect: { value: 1 },
+        uTarget: { value: new Vector2() },
       },
     });
     this.points = new Points(new BufferGeometry(), this.material);
@@ -158,10 +185,13 @@ export class Wormhole {
     u.uThickness.value = w.thickness;
     u.uSize.value = w.pointSize;
     u.uBrightAngle.value = (w.brightAngle * Math.PI) / 180;
+    u.uDrainSwirl.value = config.drain.swirl;
+    u.uDrainTravel.value = config.drain.travel;
     this.group.rotation.set((w.elevation * Math.PI) / 180, 0, (w.roll * Math.PI) / 180);
 
     // Phones draw about a third as many points, each a little brighter to keep the same weight.
     this.gain = coarse ? w.gain * 1.7 : w.gain;
+    this.well = w.well * w.innerRadius;
     const count = Math.round(coarse ? w.points * 0.35 : w.points);
     if (count !== this.wanted) {
       this.wanted = count;
@@ -183,20 +213,27 @@ export class Wormhole {
     this.builtThroat = throatKey;
   }
 
-  /** How far below the sheet the black floor of the throat sits. */
-  get floorDepth() {
-    return -this.floor.position.y;
-  }
-
   /** Where the hole sits. */
   place(x: number, y: number, z: number) {
     this.group.position.set(x, y, z);
   }
 
-  /** How big a world unit is on screen, one unit from the lens. Changes when the lens widens. */
-  setScale(pixelsPerUnit: number, pixelRatio: number) {
+  /** How big a world unit is on screen, one unit from the lens, and the shape of the screen. */
+  setScale(pixelsPerUnit: number, pixelRatio: number, aspect: number) {
     this.material.uniforms.uPixelsPerUnit.value = pixelsPerUnit;
     this.material.uniforms.uPixelRatio.value = pixelRatio;
+    this.material.uniforms.uAspect.value = aspect;
+  }
+
+  /** amount runs 0 to 1. x and y are where the grains drain to on screen, -1 to 1, y up. */
+  setDrain(amount: number, x: number, y: number) {
+    this.material.uniforms.uDrain.value = amount;
+    this.material.uniforms.uTarget.value.set(x, y);
+  }
+
+  /** How far below the far sheet the lip of the hole sits. */
+  get lipDepth() {
+    return this.well;
   }
 
   /**
