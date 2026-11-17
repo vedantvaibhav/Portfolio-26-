@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "portal:shots": "node scripts/portal-shots.mjs"
+    "portal:shots": "node scripts/portal-shots.mjs",
+    "fresh": "git pull && pnpm install && rm -rf .next && next dev"
   },
   "dependencies": {
     "@gsap/react": "2.1.2",

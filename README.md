@@ -9,6 +9,14 @@ pnpm dev
 
 Needs Node 22 and pnpm 10.
 
+To pick up the latest changes and start clean in one go:
+
+```bash
+pnpm fresh
+```
+
+That pulls, installs anything new, clears the build cache and starts the dev server. Day to day, `git pull` in a second terminal is enough while `pnpm dev` keeps running; the browser reloads itself.
+
 - `docs/brief.md` is the brief the site is built from.
 - `docs/portal/handoff.md` is the spec for the Portal entry. `docs/portal/storyboard/` holds the approved storyboard.
 - `CLAUDE.md` holds the working rules for copy, motion and facts.
