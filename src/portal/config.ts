@@ -14,12 +14,39 @@ export const portalConfig = {
     nebulaIndigo: "#33416b",
     nebulaMarigold: "#e9a321",
     nebulaCoral: "#f1a98c",
-    nebulaStrength: 0.24,
+    nebulaStrength: 0.32,
+  },
+  stars: {
+    // Stars in a 16:9 view. 20% fewer than the storyboard, per Vedant.
+    count: 3000,
+    twinkle: 0.35,
+  },
+  planet: {
+    // Dusk: clay and coral, with a slate blue cast in the bands and the rim.
+    a: "#26181a",
+    b: "#583c34",
+    tint: "#2b3552",
+    tintAmount: 0.5,
+    rim: "#a98a9c",
+    turnsPerMinute: 0.05,
+  },
+  moon: {
+    a: "#262625",
+    b: "#54524d",
+    rim: "#8c8a85",
+  },
+  dust: {
+    strength: 1,
   },
   camera: {
     fov: 40,
-    leanDegrees: 3,
-    leanLerp: 0.05,
+    // How far the camera turns and slides toward the pointer.
+    leanDegrees: 1.5,
+    leanShift: 0.25,
+    // Higher is snappier. 3 settles in about a second.
+    leanSpeed: 3,
+    drift: 0.12,
+    breathe: 0.35,
   },
   prompt: {
     delayMs: 1200,
@@ -63,6 +90,9 @@ export const portalConfig = {
   film: {
     grain: 0.045,
     vignette: 0.5,
+    bloom: 0.35,
+    bloomThreshold: 0.75,
+    edgeFringe: 0.00025,
   },
   quality: {
     stepDownMs: 22,

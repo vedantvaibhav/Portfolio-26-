@@ -9,7 +9,7 @@ const links = [
 
 export function SiteNav() {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-5 text-sm md:px-10">
+    <header data-site-chrome className="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-5 text-sm md:px-10">
       <Link href="/" className="font-medium">
         Vedant Vaibhav
       </Link>

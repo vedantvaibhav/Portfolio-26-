@@ -20,6 +20,7 @@ The home page opens on a WebGL canvas above a placeholder destination.
 
 - `src/portal/config.ts` holds every timing, colour and intensity. Change values there, nowhere else.
 - `src/portal/scene.ts` is the scene class: `enter`, `update`, `resize`, `teardown`.
+- `src/portal/layers/` holds one file per thing in the scene: nebula, stars, planet, dust.
 - `src/components/portal/portal-entry.tsx` mounts the canvas and loads the scene on demand.
 - Open `/?debug` for the FPS meter and a panel that mirrors the config.
 
@@ -27,7 +28,7 @@ The home page opens on a WebGL canvas above a placeholder destination.
 pnpm portal:shots m1
 ```
 
-That writes desktop and phone screenshots to `docs/portal/shots/m1/` and prints the FPS reading. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
+That writes desktop and phone screenshots and a short screen capture to `docs/portal/shots/m1/` and prints the FPS reading. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
 
 ## Pinned versions
 

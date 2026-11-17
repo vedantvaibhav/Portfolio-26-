@@ -79,3 +79,53 @@ body {
   position: absolute;
   border-radius: 50%;
 }
+
+/* The 3D fades in over the dark gradient once its first frame is drawn. */
+.portal-canvas {
+  opacity: 0;
+  transition: opacity 1.4s ease-out;
+}
+
+.portal-canvas[data-ready] {
+  opacity: 1;
+}
+
+/* One quiet line. It waits a moment, then fades in. */
+.portal-prompt {
+  opacity: 0.7;
+}
+
+.portal-coarse {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .portal-fine {
+    display: none;
+  }
+
+  .portal-coarse {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .portal-prompt {
+    animation: portal-prompt-in 1.2s ease-out var(--portal-prompt-delay, 1.2s) both;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-canvas {
+    transition: none;
+  }
+}
+
+@keyframes portal-prompt-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.7;
+  }
+}

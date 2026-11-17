@@ -3,6 +3,7 @@ import createMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  devIndicators: false,
   partialPrefetching: true,
   pageExtensions: ["ts", "tsx", "md", "mdx"],
   turbopack: {
