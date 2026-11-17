@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
+/*
+  Placeholder tokens. Colour and type are art direction decisions and get
+  set at the moodboard step. Only the motion rules below are settled.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f2ee;
+  --foreground: #121210;
+  --muted: #6b6963;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0e0e0c;
+    --foreground: #eceae4;
+    --muted: #8f8c84;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --ease-out-expo: var(--ease-out-expo);
+  --ease-in-out-quart: var(--ease-in-out-quart);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/*
+  Entrance animations for content that is on screen at load.
+
+  An element marked data-reveal is hidden before its script runs, so it never
+  flashes in its finished state and then jumps. It is hidden only when all of
+  these hold: scripting is on, motion is allowed, and the script has not yet
+  claimed it (data-revealed). If the script never arrives, the failsafe
+  animation shows the element anyway after 3 seconds. With scripting off or
+  reduced motion on, this rule does not apply at all.
+*/
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  [data-reveal]:not([data-revealed]) {
+    visibility: hidden;
+    animation: reveal-failsafe 0s linear 3s forwards;
+  }
+}
+
+@keyframes reveal-failsafe {
+  to {
+    visibility: visible;
+  }
 }
