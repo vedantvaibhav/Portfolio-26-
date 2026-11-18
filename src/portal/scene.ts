@@ -10,6 +10,7 @@ import {
 } from "postprocessing";
 import type { PortalConfig } from "./config";
 import { createFinalMaterial } from "./effects";
+import { Fluid } from "./layers/fluid";
 import { Wormhole } from "./layers/wormhole";
 import { buildDrain, buildReducedDrain, restFx, type Fx } from "./ritual";
 
@@ -57,6 +58,7 @@ export class PortalScene {
   private camera: PerspectiveCamera;
 
   private wormhole = new Wormhole();
+  private fluid: Fluid;
   private bloom: BloomEffect;
   private final = createFinalMaterial();
 
@@ -92,18 +94,18 @@ export class PortalScene {
   private settle = 3;
   private cover: HTMLElement | null = null;
   private label: HTMLElement | null = null;
-  /** The ring around the pointer that fills while the screen is held. */
-  private ring: HTMLElement | null = null;
   private holding = false;
-  /** Where the pointer is, eased, and how strongly the grains feel it. */
-  private hoverAt = new Vector2();
-  private hoverTo = new Vector2();
-  private hoverWas = new Vector2();
-  private hoverVel = new Vector2();
-  private hoverTo2 = new Vector2();
-  private hover = 0;
-  private hoverUntil = 0;
+  /** Where the pointer is and was, 0 to 1 across the screen, y up. For stirring the fluid. */
+  private stirAt = new Vector2();
+  private stirWas = new Vector2();
+  private stirMoved = false;
+  private stirSeen = 0;
+  /** The fluid is only worked out until this time. After that it has died away. */
+  private stirUntil = 0;
   private holeAt = new Vector2();
+  private edge = new Vector3();
+  private across = new Vector3();
+  private along = new Vector3();
 
   // Scratch values, reused.
   private axis = new Vector3();
@@ -126,6 +128,7 @@ export class PortalScene {
     this.renderer.info.autoReset = false; // count draw calls across every pass
 
     this.camera = new PerspectiveCamera(config.camera.fov, 1, 0.5, 600);
+    this.fluid = new Fluid(this.renderer, config.hover);
     this.scene.add(this.wormhole.group);
 
     this.bloom = new BloomEffect({ mipmapBlur: true, luminanceSmoothing: 0.2 });
@@ -147,6 +150,7 @@ export class PortalScene {
     this.camera.fov = config.camera.fov;
     this.camera.updateProjectionMatrix();
     this.wormhole.apply(config, window.matchMedia("(pointer: coarse)").matches);
+    this.fluid.apply(config.hover);
     this.bloom.intensity = config.film.bloom;
     this.bloom.luminanceMaterial.threshold = config.film.bloomThreshold;
     this.final.uniforms.uGrain.value = config.film.grain;
@@ -158,25 +162,23 @@ export class PortalScene {
     this.motion = reduced ? 0 : 1;
   }
 
-  /** The cover fades to show the site. The destination settles into place as it does. */
-  setElements(cover: HTMLElement | null, label: HTMLElement | null, ring: HTMLElement | null) {
+  /** The cover over the page, and the mark that is kept in the middle of the hole. */
+  setElements(cover: HTMLElement | null, label: HTMLElement | null) {
     this.cover = cover;
     this.label = label;
-    this.ring = ring;
   }
 
   /** Pointer position, -1 to 1 on each axis, y up. Ignored once the way in has started. */
   setPointer(x: number, y: number) {
     if (this.phase !== "idle") return;
     this.pointer.set(x, y);
-    // The grains feel the pointer while it moves, and for a moment after.
-    this.hoverTo.set(x, y);
-    this.hoverUntil = performance.now() + this.config.hover.fadeAfterMs;
+    this.stirAt.set(x * 0.5 + 0.5, y * 0.5 + 0.5);
+    this.stirMoved = true;
   }
 
-  /** The pointer left the page. */
+  /** The pointer left the page. The next time it is seen, it starts a new stroke. */
   clearPointer() {
-    this.hoverUntil = 0;
+    this.stirSeen = 0;
   }
 
   // ---- the way in ----
@@ -258,12 +260,66 @@ export class PortalScene {
     this.lip.copy(this.wormhole.group.position).addScaledVector(this.axis, -this.wormhole.lipDepth);
   }
 
-  /** Where the centre of the hole is on screen, -1 to 1, y up. */
+  /**
+   * Where the middle of the hole is on screen, -1 to 1, y up.
+   *
+   * The lip is a circle seen at an angle, so on screen it is an ellipse. The
+   * centre of the circle lands further back than the middle of that ellipse,
+   * and a mark put there looks too high. So walk around the lip and take the
+   * middle of what is seen.
+   */
   private holeOnScreen(out: Vector2) {
     this.findHole();
     this.camera.updateMatrixWorld();
-    this.ray.copy(this.lip).project(this.camera);
-    return out.set(this.ray.x, this.ray.y);
+    const radius = this.config.wormhole.innerRadius;
+    this.across.set(1, 0, 0).applyQuaternion(this.wormhole.group.quaternion);
+    this.along.set(0, 0, 1).applyQuaternion(this.wormhole.group.quaternion);
+    let left = Infinity;
+    let right = -Infinity;
+    let bottom = Infinity;
+    let top = -Infinity;
+    for (let i = 0; i < 24; i++) {
+      const angle = (i / 24) * Math.PI * 2;
+      this.edge
+        .copy(this.lip)
+        .addScaledVector(this.across, Math.cos(angle) * radius)
+        .addScaledVector(this.along, Math.sin(angle) * radius)
+        .project(this.camera);
+      left = Math.min(left, this.edge.x);
+      right = Math.max(right, this.edge.x);
+      bottom = Math.min(bottom, this.edge.y);
+      top = Math.max(top, this.edge.y);
+    }
+    return out.set((left + right) / 2, (bottom + top) / 2);
+  }
+
+  /** Feed the pointer's movement to the fluid, move the fluid on, and hand it to the grains. */
+  private stir(dt: number) {
+    const { hover } = this.config;
+    const now = performance.now();
+    if (this.stirMoved) {
+      this.stirMoved = false;
+      // A pointer that has just arrived, or come back after a pause, starts a new stroke.
+      const fresh = now - this.stirSeen < Math.max(120, dt * 3000);
+      if (fresh && this.phase === "idle" && this.motion) {
+        // How far it moved, measured as if the screen were 900 pixels tall, so every screen feels the same.
+        const dx = (this.stirAt.x - this.stirWas.x) * this.camera.aspect * 900;
+        const dy = (this.stirAt.y - this.stirWas.y) * 900;
+        const speed = Math.hypot(dx, dy) / Math.max(dt, 1e-4);
+        // A fast sweep pushes up to twice as hard.
+        const boost = 1 + Math.min(1, Math.max(0, (speed - 500) / 9500));
+        const push = hover.force * boost;
+        if (dx !== 0 || dy !== 0) {
+          this.fluid.splat(this.stirWas.x, this.stirWas.y, this.stirAt.x, this.stirAt.y, dx * push, dy * push);
+          this.stirUntil = now + 6000;
+        }
+      }
+      this.stirWas.copy(this.stirAt);
+      this.stirSeen = now;
+    }
+    const alive = now < this.stirUntil;
+    if (alive) this.fluid.step(dt);
+    this.wormhole.setFluid(this.fluid.texture, alive ? hover.influence * this.motion : 0);
   }
 
   /** Is this point of the screen over the black of the hole? Cast a ray and see where it meets the lip. */
@@ -328,30 +384,17 @@ export class PortalScene {
       Math.sin(t * 0.19) * c.breathe,
     );
 
-    // The grains near the pointer step aside. It fades when the pointer rests, leaves, or the way in starts.
-    const feel = this.phase === "idle" && performance.now() < this.hoverUntil ? 1 : 0;
-    this.hover += (feel - this.hover) * (1 - Math.exp(-dt * 4));
-    this.hoverWas.copy(this.hoverAt);
-    this.hoverAt.lerp(this.hoverTo, 1 - Math.exp(-dt * this.config.hover.follow));
-    // How fast the pointer is moving, eased, in screen heights per second. Capped so a flick does not fling grains.
-    const perSecond = dt > 0 ? 0.5 / dt : 0;
-    this.hoverTo2.set((this.hoverAt.x - this.hoverWas.x) * this.camera.aspect, this.hoverAt.y - this.hoverWas.y).multiplyScalar(perSecond);
-    if (this.hoverTo2.length() > 2.5) this.hoverTo2.setLength(2.5);
-    this.hoverVel.lerp(this.hoverTo2, 1 - Math.exp(-dt * 6));
-    this.wormhole.setHover(this.hover * this.motion, this.hoverAt.x, this.hoverAt.y, this.hoverVel.x, this.hoverVel.y, this.clock);
+    // The pointer stirs the fluid as it moves, and the grains are carried by it.
+    this.stir(dt);
 
-    // The words in the middle of the hole stay in the middle of the hole as the camera leans.
+    // The mark in the middle of the hole stays in the middle of the hole as the camera leans.
     if (this.label) {
       this.holeOnScreen(this.holeAt);
       const x = ((this.holeAt.x + 1) / 2) * this.width;
       const y = ((1 - this.holeAt.y) / 2) * this.height;
       this.label.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%)`;
-    }
-
-    // The ring around the pointer fills as the hold goes on, and empties if it is let go.
-    if (this.ring) {
-      this.ring.style.setProperty("--hold", fx.drain.toFixed(4));
-      this.ring.style.opacity = this.holding ? "1" : "0";
+      // The arc around it fills as the grains go, and empties if the hold is let go.
+      this.label.style.setProperty("--hold", fx.drain.toFixed(4));
     }
     this.cover?.toggleAttribute("data-holding", this.holding);
 
@@ -383,6 +426,7 @@ export class PortalScene {
 
     this.renderer.setPixelRatio(dpr);
     this.composer.setSize(width, height, false);
+    this.fluid.resize(width, height);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
 
@@ -400,6 +444,7 @@ export class PortalScene {
     document.documentElement.style.removeProperty("--portal-reveal");
     document.documentElement.style.removeProperty("--portal-reveal-grow");
     this.wormhole.dispose();
+    this.fluid.dispose();
     this.final.dispose();
     this.composer.dispose();
     this.renderer.dispose();

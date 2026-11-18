@@ -45,16 +45,24 @@ export const portalConfig = {
     breathe: 0.35,
   },
   hover: {
-    // The pointer stirs the grains near it. radius is how wide, in screen heights.
-    // The effect fades out softly from the middle, so there is no edge.
-    radius: 0.24,
-    // How far each grain wanders on its own while the pointer is near. Screen heights.
-    push: 0.016,
-    // How far grains are carried along with the pointer's movement. Higher trails more.
-    drag: 0.06,
-    // How quickly the effect follows the pointer, and how long it lingers once it stops.
-    follow: 7,
-    fadeAfterMs: 1800,
+    // The pointer stirs a small fluid laid over the screen, and every grain is
+    // carried by the fluid under it. A resting pointer does nothing; a moving one
+    // leaves a wake that curls and fades. This is Shopify Editions' method, and
+    // curl, dissipation, pressure, radius, force and simSize start from their values.
+    //
+    // How far a grain is carried for each unit of fluid speed. 0 turns it off.
+    influence: 0.0045,
+    // How hard the pointer shoves the fluid as it moves.
+    force: 0.08,
+    // How wide the shove is, in screen heights.
+    radius: 0.125,
+    // How strongly small swirls are kept alive.
+    curl: 6.5,
+    // The share of the fluid's speed kept each sixtieth of a second. Lower dies away sooner.
+    dissipation: 0.96,
+    pressure: 0.8,
+    // Cells along the long side of the screen. It is a tiny simulation on purpose.
+    simSize: 128,
   },
   drain: {
     // The way in. The grains leave the wormhole one by one and fly to a point,
@@ -95,12 +103,9 @@ export const portalConfig = {
   loading: {
     // The count from 0 to 100 never runs faster than this, however quick the load.
     minMs: 1900,
-    // The number moves on in steps about this far apart, and each digit rolls to its new place over rollMs.
-    stepMs: 360,
-    rollMs: 650,
-    // At 100 it holds for a moment, then rolls away before the wormhole comes up.
+    // At 100 it holds for a moment, then fades before the wormhole comes up.
     holdMs: 260,
-    leaveMs: 520,
+    leaveMs: 380,
   },
   reduced: {
     crossfadeMs: 400,

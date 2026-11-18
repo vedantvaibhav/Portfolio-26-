@@ -24,22 +24,23 @@ That pulls, installs anything new, clears the build cache and starts the dev ser
 
 ## The Portal entry
 
-The home page opens on a black screen with one large number at the bottom left, rolling from 0 to 100. At 100 it rolls away and a wormhole comes up, rendered in WebGL. A mark of moving rings in the middle of the hole says to hold. A press and hold inside the hole draws every grain to that point; when they are gone the text of the page comes up on the black. A ring around the pointer shows how long is left; let go early and it all comes back. A press anywhere else only points at the mark. A scroll, the arrow keys, Space and Enter work like a hold at the centre.
+The home page opens on a black screen with one large number at the bottom left, counting from 0 to 100. At 100 it fades and a wormhole comes up, rendered in WebGL. A glowing ring in the middle of the hole says to hold. A press and hold inside the hole draws every grain to that point; when they are gone the text of the page comes up on the black. An arc fills around the ring to show how long is left; let go early and it all comes back. A press anywhere else only points at the ring. Moving the pointer stirs the grains. A scroll, the arrow keys, Space and Enter work like a hold at the centre.
 
 - `src/portal/config.ts` holds every timing, colour and intensity. Change values there, nowhere else.
 - `src/portal/scene.ts` is the scene class (`enter`, `update`, `resize`, `teardown`). It runs the way in and works out whether a hold landed inside the hole.
 - `src/portal/ritual.ts` is the master timeline: the drain, then the site appearing.
 - `src/portal/layers/wormhole.ts` draws the wormhole as a point cloud and moves the grains toward the drain point. `wormhole-cloud.ts` builds the cloud once, in a Web Worker.
+- `src/portal/layers/fluid.ts` is the small fluid simulation the pointer stirs. The grains are carried by it.
 - `src/portal/effects.ts` is the final pass: vignette and film grain.
 - `src/components/portal/portal-entry.tsx` mounts the canvas, listens for the scroll and the hold, and loads the scene on demand.
 
 Open `/?debug` for the FPS meter and a panel that mirrors the config. Its timeline folder starts the way in, pauses it and scrubs through it.
 
 ```bash
-pnpm portal:shots m13
+pnpm portal:shots m14
 ```
 
-That writes a still of every beat, desktop and phone, to `docs/portal/shots/m13/`, and checks the hold and the scroll. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
+That writes a still of every beat, desktop and phone, to `docs/portal/shots/m14/`, and checks the hold and the scroll. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
 
 ## Pinned versions
 

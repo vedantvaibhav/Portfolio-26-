@@ -1,10 +1,10 @@
 // Stills of the Portal entry at every beat, for reviews.
 //
 //   pnpm dev                      (in another terminal)
-//   pnpm portal:shots m13         writes docs/portal/shots/m13/
-//   pnpm portal:shots m13 http://localhost:3001
+//   pnpm portal:shots m14         writes docs/portal/shots/m14/
+//   pnpm portal:shots m14 http://localhost:3001
 //
-// It captures the loading number, the hold mark and a hover, checks the hold
+// It captures the loading number, the hold mark and a sweep of the pointer, checks the hold
 // (inside the hole it drains to that point and reveals the text, outside it only
 // shows where to hold, let go early and it all comes back), then pauses the way
 // in and steps through it.
@@ -41,9 +41,8 @@ for (const { name, ...options } of viewports) {
   await page.goto(`${base}/?debug`, { waitUntil: "domcontentloaded" });
   // The loading screen: black, and a number.
   await page.locator(".portal-load").waitFor({ timeout: 60000 });
-  await page.waitForFunction(() => Number(document.querySelector(".portal-load").dataset.value) >= 20, null, { timeout: 120000 });
-  const counted = await page.locator(".portal-load").getAttribute("data-value");
-  // Caught mid roll: the digits are between places.
+  await page.waitForFunction(() => Number(document.querySelector(".portal-load").textContent) >= 20, null, { timeout: 120000 });
+  const counted = await page.locator(".portal-load").innerText();
   await shot("1-loading");
 
   // Software rendering is slow. Stop the scene from thinning the cloud to make up for it.
@@ -76,15 +75,16 @@ for (const { name, ...options } of viewports) {
   });
   await shot("2-arrival");
 
-  // Rest the pointer on the grains, then sweep it across them: they stir, and no round gap opens.
-  const at = { x: options.viewport.width * 0.3, y: options.viewport.height * 0.62 };
+  // Sweep the pointer across the grains: it stirs the fluid and they are carried along its wake.
   if (!options.hasTouch) {
-    await page.mouse.move(at.x, at.y);
-    await page.waitForTimeout(1600);
-    await shot("2b-hover-rest");
-    await page.mouse.move(at.x + 160, at.y - 30, { steps: 6 });
-    await page.waitForTimeout(250);
-    await shot("2c-hover-moving");
+    const from = { x: options.viewport.width * 0.2, y: options.viewport.height * 0.7 };
+    await page.mouse.move(from.x, from.y);
+    for (let i = 1; i <= 14; i++) {
+      await page.mouse.move(from.x + i * 28, from.y - i * 4);
+      await page.waitForTimeout(60);
+    }
+    await shot("2b-hover-wake");
+    await page.waitForTimeout(2500);
   }
 
   // A press in the corner is outside the hole: nothing drains, and a ring shows where to hold.
@@ -105,7 +105,6 @@ for (const { name, ...options } of viewports) {
     const inside = scene.hold(x, y);
     scene.pause(true);
     scene.timeline.progress(0.6);
-    document.querySelector(".portal-ring").style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
     return inside;
   });
   await page.waitForTimeout(1300);
@@ -137,7 +136,7 @@ for (const { name, ...options } of viewports) {
   const checks = {
     "loading number shows": Number(counted) >= 20,
     "only the hold mark's words on the wormhole": words === "Tap Hold",
-    "the mark goes while holding": wordsHeld === "",
+    "the mark stays while holding": wordsHeld === "Tap Hold",
     "press outside does not drain": outside === "idle",
     "hold inside works": hold === true,
     "letting go hides the text": Number(hiddenAgain) < 0.02,
