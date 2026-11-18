@@ -45,12 +45,16 @@ export const portalConfig = {
     breathe: 0.35,
   },
   hover: {
-    // Grains near the pointer are nudged aside. radius and push are in screen heights.
-    radius: 0.11,
-    push: 0.045,
-    // How quickly the effect follows the pointer, and fades when it stops or leaves.
-    follow: 9,
-    fadeAfterMs: 1400,
+    // The pointer stirs the grains near it. radius is how wide, in screen heights.
+    // The effect fades out softly from the middle, so there is no edge.
+    radius: 0.24,
+    // How far each grain wanders on its own while the pointer is near. Screen heights.
+    push: 0.016,
+    // How far grains are carried along with the pointer's movement. Higher trails more.
+    drag: 0.06,
+    // How quickly the effect follows the pointer, and how long it lingers once it stops.
+    follow: 7,
+    fadeAfterMs: 1800,
   },
   drain: {
     // The way in. The grains leave the wormhole one by one and fly to a point,
@@ -71,25 +75,32 @@ export const portalConfig = {
     // The flow of the wormhole runs this many times faster by the end.
     pullBoost: 6,
     // A hold runs this many times faster than a scroll.
-    holdSpeed: 1.2,
+    holdSpeed: 1.45,
     // Letting go early plays it backwards this many times faster.
     returnSpeed: 1.6,
     // A hold counts if it lands within this many hole radii of the centre.
     reach: 1.05,
   },
   reveal: {
-    // The text of the page comes up while the grains are still leaving. These are
-    // the shares of the drain at which it starts and finishes appearing.
-    from: 0.3,
-    to: 0.92,
+    // Everything drains away first, and the frame is left black. Then the text of the
+    // page comes up on it. from is the share of the drain at which it starts: by 0.92
+    // only the last few grains are left. ms is how long it takes to appear.
+    from: 0.92,
+    ms: 800,
     // It starts this much larger and settles to its true size as it appears.
     scale: 1.03,
     // A short beat with everything in place before the entry steps aside.
-    tailMs: 350,
+    tailMs: 150,
   },
   loading: {
     // The count from 0 to 100 never runs faster than this, however quick the load.
-    minMs: 1700,
+    minMs: 1900,
+    // The number moves on in steps about this far apart, and each digit rolls to its new place over rollMs.
+    stepMs: 360,
+    rollMs: 650,
+    // At 100 it holds for a moment, then rolls away before the wormhole comes up.
+    holdMs: 260,
+    leaveMs: 520,
   },
   reduced: {
     crossfadeMs: 400,

@@ -98,6 +98,9 @@ export class PortalScene {
   /** Where the pointer is, eased, and how strongly the grains feel it. */
   private hoverAt = new Vector2();
   private hoverTo = new Vector2();
+  private hoverWas = new Vector2();
+  private hoverVel = new Vector2();
+  private hoverTo2 = new Vector2();
   private hover = 0;
   private hoverUntil = 0;
   private holeAt = new Vector2();
@@ -328,8 +331,14 @@ export class PortalScene {
     // The grains near the pointer step aside. It fades when the pointer rests, leaves, or the way in starts.
     const feel = this.phase === "idle" && performance.now() < this.hoverUntil ? 1 : 0;
     this.hover += (feel - this.hover) * (1 - Math.exp(-dt * 4));
+    this.hoverWas.copy(this.hoverAt);
     this.hoverAt.lerp(this.hoverTo, 1 - Math.exp(-dt * this.config.hover.follow));
-    this.wormhole.setHover(this.hover * this.motion, this.hoverAt.x, this.hoverAt.y);
+    // How fast the pointer is moving, eased, in screen heights per second. Capped so a flick does not fling grains.
+    const perSecond = dt > 0 ? 0.5 / dt : 0;
+    this.hoverTo2.set((this.hoverAt.x - this.hoverWas.x) * this.camera.aspect, this.hoverAt.y - this.hoverWas.y).multiplyScalar(perSecond);
+    if (this.hoverTo2.length() > 2.5) this.hoverTo2.setLength(2.5);
+    this.hoverVel.lerp(this.hoverTo2, 1 - Math.exp(-dt * 6));
+    this.wormhole.setHover(this.hover * this.motion, this.hoverAt.x, this.hoverAt.y, this.hoverVel.x, this.hoverVel.y, this.clock);
 
     // The words in the middle of the hole stay in the middle of the hole as the camera leans.
     if (this.label) {

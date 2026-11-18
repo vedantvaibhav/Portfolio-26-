@@ -1,12 +1,13 @@
 // Stills of the Portal entry at every beat, for reviews.
 //
 //   pnpm dev                      (in another terminal)
-//   pnpm portal:shots m12         writes docs/portal/shots/m12/
-//   pnpm portal:shots m12 http://localhost:3001
+//   pnpm portal:shots m13         writes docs/portal/shots/m13/
+//   pnpm portal:shots m13 http://localhost:3001
 //
-// It captures the loading count, checks the hold (inside the hole it drains to
-// that point and reveals the text, outside it only shows where to hold, let go
-// early and it all comes back), then pauses the way in and steps through it.
+// It captures the loading number, the hold mark and a hover, checks the hold
+// (inside the hole it drains to that point and reveals the text, outside it only
+// shows where to hold, let go early and it all comes back), then pauses the way
+// in and steps through it.
 // Headless Chromium renders WebGL in software, so the FPS it prints is a smoke
 // test, not a result, and it is too slow to record video.
 import { chromium } from "playwright";
@@ -22,7 +23,7 @@ const viewports = [
   { name: "desktop", viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
   { name: "phone", viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
 ];
-// Position on the master timeline, 0 to 1. The grains are all gone near 0.9.
+// Position on the master timeline, 0 to 1. The grains are all gone near 0.83, and then the text comes up.
 const beats = [["5-drain-a", 0.25], ["6-drain-b", 0.5], ["7-drain-c", 0.7], ["8-drain-d", 0.86], ["9-arrived", 0.99]];
 
 const browser = await chromium.launch({
@@ -39,9 +40,10 @@ for (const { name, ...options } of viewports) {
 
   await page.goto(`${base}/?debug`, { waitUntil: "domcontentloaded" });
   // The loading screen: black, and a number.
-  await page.locator(".portal-count").waitFor({ timeout: 60000 });
-  await page.waitForFunction(() => Number(document.querySelector(".portal-count").textContent) >= 20, null, { timeout: 120000 });
-  const counted = await page.locator(".portal-count").innerText();
+  await page.locator(".portal-load").waitFor({ timeout: 60000 });
+  await page.waitForFunction(() => Number(document.querySelector(".portal-load").dataset.value) >= 20, null, { timeout: 120000 });
+  const counted = await page.locator(".portal-load").getAttribute("data-value");
+  // Caught mid roll: the digits are between places.
   await shot("1-loading");
 
   // Software rendering is slow. Stop the scene from thinning the cloud to make up for it.
@@ -52,24 +54,38 @@ for (const { name, ...options } of viewports) {
   await page.locator("canvas[data-ready]").waitFor({ timeout: 240000 });
   await page.waitForTimeout(6000);
   const reading = (await page.locator("[data-portal-fps]").innerText()).replace(/\s+/g, " ");
-  // Words a sighted visitor can see on the wormhole. The count has faded and the skip button only shows on keyboard focus.
-  const words = await page.evaluate(() =>
+  // Words a sighted visitor can see on the wormhole. The loading number has gone and the skip button only shows on keyboard focus.
+  const seenWords = () =>
+    page.evaluate(() =>
     [...document.querySelectorAll(".portal-cover *")]
       .filter((el) => el.children.length === 0 && el.textContent.trim())
       .filter((el) => {
         const box = el.getBoundingClientRect();
         const style = getComputedStyle(el);
-        const shown = Number(style.opacity) > 0.05 && Number(getComputedStyle(el.parentElement).opacity) > 0.05;
+        let shown = style.visibility !== "hidden";
+        for (let up = el; up && shown; up = up.parentElement) shown = Number(getComputedStyle(up).opacity) > 0.05;
         return box.width > 2 && box.height > 2 && shown;
       })
       .map((el) => el.textContent.trim())
       .join(" "),
-  );
+    );
+  const words = await seenWords();
   await page.evaluate(() => {
     document.querySelector(".lil-gui").style.display = "none";
     document.querySelector("[data-portal-fps]").style.display = "none";
   });
   await shot("2-arrival");
+
+  // Rest the pointer on the grains, then sweep it across them: they stir, and no round gap opens.
+  const at = { x: options.viewport.width * 0.3, y: options.viewport.height * 0.62 };
+  if (!options.hasTouch) {
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(1600);
+    await shot("2b-hover-rest");
+    await page.mouse.move(at.x + 160, at.y - 30, { steps: 6 });
+    await page.waitForTimeout(250);
+    await shot("2c-hover-moving");
+  }
 
   // A press in the corner is outside the hole: nothing drains, and a ring shows where to hold.
   await page.mouse.move(60, 60);
@@ -93,6 +109,7 @@ for (const { name, ...options } of viewports) {
     return inside;
   });
   await page.waitForTimeout(1300);
+  const wordsHeld = await seenWords();
   await shot("4-hold");
   // Let go early: the grains and the text must go back.
   await page.evaluate(() => {
@@ -118,8 +135,9 @@ for (const { name, ...options } of viewports) {
   const focus = await page.evaluate(() => document.activeElement?.tagName);
 
   const checks = {
-    "count shows": Number(counted) >= 20,
-    "no words on the wormhole": words === "",
+    "loading number shows": Number(counted) >= 20,
+    "only the hold mark's words on the wormhole": words === "Tap Hold",
+    "the mark goes while holding": wordsHeld === "",
     "press outside does not drain": outside === "idle",
     "hold inside works": hold === true,
     "letting go hides the text": Number(hiddenAgain) < 0.02,

@@ -5,7 +5,7 @@ import type { PortalConfig } from "./config";
 export type Fx = {
   /** 0 the wormhole at rest, 1 every grain drawn into the point and gone. */
   drain: number;
-  /** 0 the page's text hidden, 1 fully there. It comes up while the grains are still leaving. */
+  /** 0 the page's text hidden, 1 fully there. It comes up once the grains have gone. */
   reveal: number;
   /** Opacity of the cover. Only the reduced motion path fades it. */
   cover: number;
@@ -18,24 +18,24 @@ export function restFx(): Fx {
 type Hooks = { onGone: () => void; onDone: () => void; onReturned: () => void };
 
 /**
- * The master timeline: the grains drain to a point, and the text of the page
- * comes up on the black as they go. It is built paused. Playing it forward is
- * the way in; reversing it before the "gone" label is letting go of a hold,
- * which takes the text away again with it.
+ * The master timeline: the grains drain to a point and the frame is left
+ * black, then the text of the page comes up on it. It is built paused.
+ * Playing it forward is the way in; reversing it before the "gone" label is
+ * letting go of a hold.
  */
 export function buildDrain(fx: Fx, config: PortalConfig, hooks: Hooks) {
   const drain = config.drain.ms / 1000;
   const from = drain * config.reveal.from;
-  const to = drain * config.reveal.to;
+  const appear = config.reveal.ms / 1000;
   const tl = gsap.timeline({ paused: true, onComplete: hooks.onDone, onReverseComplete: hooks.onReturned });
 
   // Each grain eases on its own in the shader, so the clock itself runs evenly.
   tl.to(fx, { drain: 1, duration: drain, ease: "none" }, 0)
-    .to(fx, { reveal: 1, duration: to - from, ease: "sine.inOut" }, from)
+    .to(fx, { reveal: 1, duration: appear, ease: "sine.inOut" }, from)
     .addLabel("gone", drain)
     .call(hooks.onGone, undefined, "gone")
     // A short beat with everything in place before the entry steps aside.
-    .to({}, { duration: config.reveal.tailMs / 1000 }, "gone");
+    .to({}, { duration: config.reveal.tailMs / 1000 }, Math.max(drain, from + appear));
 
   return tl;
 }

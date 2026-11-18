@@ -24,7 +24,7 @@ That pulls, installs anything new, clears the build cache and starts the dev ser
 
 ## The Portal entry
 
-The home page opens on a black screen with a count from 0 to 100. At 100 a wormhole comes up, rendered in WebGL, with no words on it. A press and hold inside the hole draws every grain to that point, and the text of the page comes up on the black as they go. A ring around the pointer shows how long is left; let go early and it all comes back. A press anywhere else only shows where to hold. A scroll, the arrow keys, Space and Enter work like a hold at the centre.
+The home page opens on a black screen with one large number at the bottom left, rolling from 0 to 100. At 100 it rolls away and a wormhole comes up, rendered in WebGL. A mark of moving rings in the middle of the hole says to hold. A press and hold inside the hole draws every grain to that point; when they are gone the text of the page comes up on the black. A ring around the pointer shows how long is left; let go early and it all comes back. A press anywhere else only points at the mark. A scroll, the arrow keys, Space and Enter work like a hold at the centre.
 
 - `src/portal/config.ts` holds every timing, colour and intensity. Change values there, nowhere else.
 - `src/portal/scene.ts` is the scene class (`enter`, `update`, `resize`, `teardown`). It runs the way in and works out whether a hold landed inside the hole.
@@ -36,10 +36,10 @@ The home page opens on a black screen with a count from 0 to 100. At 100 a wormh
 Open `/?debug` for the FPS meter and a panel that mirrors the config. Its timeline folder starts the way in, pauses it and scrubs through it.
 
 ```bash
-pnpm portal:shots m12
+pnpm portal:shots m13
 ```
 
-That writes a still of every beat, desktop and phone, to `docs/portal/shots/m12/`, and checks the hold and the scroll. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
+That writes a still of every beat, desktop and phone, to `docs/portal/shots/m13/`, and checks the hold and the scroll. The dev server must be running. On a new machine, run `pnpm exec playwright install chromium` once first.
 
 ## Pinned versions
 

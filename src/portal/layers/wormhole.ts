@@ -36,7 +36,8 @@ uniform float uPixelsPerUnit, uPixelRatio, uBrightAngle, uGain;
 uniform float uDrain, uDrainCurve, uDrainFlight, uDrainTravel, uDrainRush, uAspect;
 uniform vec2 uTarget;       // where the grains drain to, in screen space: -1 to 1 on each axis
 uniform vec2 uPointer;      // where the pointer is, in the same space
-uniform float uHover, uHoverRadius, uHoverPush;
+uniform vec2 uPointerVel;   // and how fast it is moving, in screen heights per second
+uniform float uHover, uHoverRadius, uHoverPush, uHoverDrag, uStir;
 varying float vLight;
 const float TAU = 6.2831853;
 
@@ -70,19 +71,21 @@ void main(){
   float roll = fract(sin(dot(position.xy, vec2(12.9898, 78.233)))*43758.5453);
   float bend = fract(sin(dot(position.xy, vec2(39.3468, 11.135)))*24634.6345)-0.5;
 
-  // The pointer. Grains near it are nudged out of its way, each by its own
-  // amount and a little sideways, and catch a bit more light. The rest of
-  // the wormhole does not move.
+  // The pointer stirs the grains. There is no push outward from it, which would
+  // open a round gap. Each grain near it wanders its own way, slowly and all the
+  // time, and is carried a little along whichever way the pointer is moving, the
+  // light ones further than the heavy ones. The effect is wide and fades out
+  // softly, so there is no edge to see.
   float stirred = 1.;
   if (uHover > 0.) {
     vec2 screen = gl_Position.xy/gl_Position.w;
     vec2 off = (screen-uPointer)*vec2(uAspect, 1.);
-    float d = length(off);
-    float near = exp(-d*d/(uHoverRadius*uHoverRadius))*uHover;
-    vec2 out2 = d > 1e-4 ? off/d : vec2(0.);
-    vec2 push = out2*(0.35+1.3*roll) + vec2(-out2.y, out2.x)*bend*1.6;
-    gl_Position.xy = (screen+push*uHoverPush*near/vec2(uAspect, 1.))*gl_Position.w;
-    stirred = 1.+0.7*near;
+    float near = exp(-dot(off, off)/(uHoverRadius*uHoverRadius))*uHover;
+    float way = 6.2831853*roll + uStir*(0.5+1.4*(bend+0.5));
+    vec2 wander = vec2(cos(way), sin(way))*(0.3+roll);
+    vec2 carried = uPointerVel*(0.2+1.6*roll*roll);
+    gl_Position.xy = (screen+(wander*uHoverPush+carried*uHoverDrag)*near/vec2(uAspect, 1.))*gl_Position.w;
+    stirred = 1.+0.3*near;
   }
 
   // The drain. The picture is not pulled or bent. Each grain leaves on its own,
@@ -187,7 +190,10 @@ export class Wormhole {
         uPointer: { value: new Vector2() },
         uHover: { value: 0 },
         uHoverRadius: { value: 0.2 },
-        uHoverPush: { value: 0.05 },
+        uHoverPush: { value: 0.02 },
+        uHoverDrag: { value: 0.05 },
+        uStir: { value: 0 },
+        uPointerVel: { value: new Vector2() },
       },
     });
     this.points = new Points(new BufferGeometry(), this.material);
@@ -221,6 +227,7 @@ export class Wormhole {
     u.uDrainRush.value = config.drain.rush;
     u.uHoverRadius.value = config.hover.radius;
     u.uHoverPush.value = config.hover.push;
+    u.uHoverDrag.value = config.hover.drag;
     this.group.rotation.set((w.elevation * Math.PI) / 180, 0, (w.roll * Math.PI) / 180);
 
     // Phones draw about a third as many points, each a little brighter to keep the same weight.
@@ -265,10 +272,15 @@ export class Wormhole {
     this.material.uniforms.uTarget.value.set(x, y);
   }
 
-  /** amount runs 0 to 1. x and y are where the pointer is on screen, -1 to 1, y up. */
-  setHover(amount: number, x: number, y: number) {
+  /**
+   * amount runs 0 to 1. x and y are where the pointer is on screen, -1 to 1, y up.
+   * vx and vy are how fast it is moving, in screen heights per second. time is in seconds.
+   */
+  setHover(amount: number, x: number, y: number, vx: number, vy: number, time: number) {
     this.material.uniforms.uHover.value = amount;
     this.material.uniforms.uPointer.value.set(x, y);
+    this.material.uniforms.uPointerVel.value.set(vx, vy);
+    this.material.uniforms.uStir.value = time;
   }
 
   /** True once the point cloud has been built and handed to the GPU. */

@@ -11,6 +11,9 @@
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  /* The system face. On Apple devices this is SF Pro, which cannot be served as a web font. */
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -104,43 +107,208 @@ html.portal-home [data-site-chrome] > a {
   visibility: hidden;
 }
 
-/* The wormhole fades in once the count has reached 100. */
+/* The wormhole fades in once the loading number has reached 100 and started to leave. */
 .portal-canvas {
   opacity: 0;
-  transition: opacity 1.6s ease-out;
+  transition: opacity 1.6s ease-out 0.3s;
 }
 
 .portal-canvas[data-ready] {
   opacity: 1;
 }
 
-/* The loading count: the only thing on a black screen. */
-.portal-count {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.85;
-  transition: opacity 0.5s ease-out;
+/*
+  The loading number: large, at the bottom left, the only thing on a black
+  screen. Each column is a strip of digits that slides to the one it should
+  show. --at is which cell, --roll how long a slide takes, --leave how long the
+  number takes to roll away at 100.
+*/
+.portal-load {
+  --cell: 0.86em;
+  position: absolute;
+  left: clamp(1rem, 2.6vw, 2.75rem);
+  bottom: clamp(0.75rem, 2.2vw, 2.25rem);
+  display: flex;
+  margin: 0;
+  color: #efe9dd;
+  font-family: var(--font-system);
+  font-size: clamp(6.5rem, 17vw, 15rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: var(--cell);
+  visibility: visible;
+  transition: visibility 0s linear calc(var(--leave) + 0.2s);
 }
 
-.portal-count[data-hidden] {
+.portal-load[data-leaving] {
+  visibility: hidden;
+}
+
+.portal-load-col {
+  display: block;
+  height: var(--cell);
+  max-width: 1em;
+  overflow: hidden;
+  transition: max-width var(--roll) var(--ease-out-expo);
+}
+
+/* A leading column takes no room until it has a digit to show. */
+.portal-load-col[data-empty] {
+  max-width: 0;
+}
+
+.portal-load-out {
+  display: block;
+  height: var(--cell);
+  transition: transform var(--leave) cubic-bezier(0.6, 0, 0.9, 0.3);
+}
+
+.portal-load-col:nth-child(2) .portal-load-out {
+  transition-delay: 0.06s;
+}
+
+.portal-load-col:nth-child(3) .portal-load-out {
+  transition-delay: 0.12s;
+}
+
+.portal-load[data-leaving] .portal-load-out {
+  transform: translateY(-115%);
+}
+
+.portal-load-strip {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--at) * var(--cell) * -1));
+  transition: transform var(--roll) var(--ease-out-expo);
+}
+
+.portal-load-strip > span {
+  display: block;
+  height: var(--cell);
+}
+
+/*
+  Where to hold: a small mark in the middle of the hole, with rings moving in
+  toward its centre the way the grains do, and two words beside it.
+*/
+.portal-hold {
+  width: clamp(96px, 9vw, 136px);
+  height: clamp(96px, 9vw, 136px);
+  color: #efe9dd;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+.portal-hold[data-shown] {
+  opacity: 1;
+  transition: opacity 0.7s ease-out 0.15s;
+}
+
+/* The first time, it waits for the wormhole to come up. */
+.portal-hold-in {
+  position: absolute;
+  inset: 0;
   opacity: 0;
 }
 
-/* Where to hold. Invisible until a press lands outside the hole, then it is animated from script. */
-.portal-where {
-  width: 46px;
-  height: 46px;
+.portal-cover[data-ready] .portal-hold-in {
+  animation: portal-hold-in 0.9s ease-out 1.5s forwards;
 }
 
-.portal-where svg {
+.portal-hold-rim,
+.portal-hold-wave,
+.portal-hold-core {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.portal-hold-rim {
+  inset: 0;
+  border: 1px solid rgba(239, 233, 221, 0.16);
+}
+
+.portal-hold-wave {
+  inset: 0;
+  border: 1px solid rgba(239, 233, 221, 0.6);
+  opacity: 0;
+  animation: portal-hold-wave 3.4s linear infinite;
+}
+
+.portal-hold-wave + .portal-hold-wave {
+  animation-delay: -1.7s;
+}
+
+.portal-hold-core {
+  inset: 27%;
+  border: 1px solid rgba(239, 233, 221, 0.7);
+  box-shadow:
+    0 0 22px 7px rgba(239, 233, 221, 0.22),
+    inset 0 0 16px 4px rgba(239, 233, 221, 0.22);
+  animation: portal-hold-breathe 3.4s ease-in-out infinite;
+}
+
+/* Invisible until a press lands outside the hole, then it is animated from script. */
+.portal-hold-call {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   opacity: 0;
 }
 
-.portal-where circle {
+.portal-hold-call circle {
   stroke: #efe9dd;
-  stroke-width: 1.5;
+  stroke-width: 0.8;
+}
+
+.portal-hold-words {
+  position: absolute;
+  left: calc(100% + clamp(14px, 1.5vw, 22px));
+  top: 50%;
+  margin: 0;
+  transform: translateY(-50%);
+  font-family: var(--font-system);
+  font-size: clamp(13px, 1.2vw, 17px);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.portal-hold-words span {
+  display: block;
+}
+
+@keyframes portal-hold-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes portal-hold-wave {
+  0% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(0.46);
+    opacity: 0;
+  }
+}
+
+@keyframes portal-hold-breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+  }
+  50% {
+    transform: scale(1.06);
+  }
 }
 
 /* The ring around the pointer while the screen is held. --hold runs 0 to 1. */
@@ -176,17 +344,27 @@ html.portal-home [data-site-chrome] > a {
   cursor: none;
 }
 
-/* A finger hides what is under it, so both rings are drawn wider on touch screens. */
+/* A finger hides what is under it, so the ring is drawn wider on touch screens. */
 @media (pointer: coarse) {
-  .portal-ring,
-  .portal-where {
+  .portal-ring {
     width: 92px;
     height: 92px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .portal-canvas {
+  .portal-canvas,
+  .portal-load-col,
+  .portal-load-out,
+  .portal-load-strip {
     transition: none;
+  }
+
+  .portal-hold-wave {
+    display: none;
+  }
+
+  .portal-hold-core {
+    animation: none;
   }
 }

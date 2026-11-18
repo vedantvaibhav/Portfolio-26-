@@ -1,17 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type WheelEvent } from "react";
 import { portalConfig } from "@/portal/config";
 import type { Phase, PortalScene } from "@/portal/scene";
 
 /** A touch that travels this far upward counts as a scroll. */
 const SWIPE_PX = 36;
 
+// The strips of digits the loading number rolls through, one per column.
+// The ones strip is long because it only ever rolls forward.
+const ONES = Array.from({ length: 101 }, (_, i) => String(i % 10));
+const TENS = ["\u00a0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+const HUNDREDS = ["\u00a0", "1"];
+
 /**
  * The entry to the site.
  *
- * First a black screen with a count from 0 to 100 and nothing else. At 100
- * the wormhole comes up. There are no words on it.
+ * First a black screen with nothing on it but a large number at the bottom
+ * left, rolling from 0 to 100. At 100 it rolls away and the wormhole comes
+ * up. In the middle of the hole a small mark of moving rings says to hold.
  *
  * A press and hold inside the hole draws every grain to that point, and the
  * text of the page comes up on the black as they go. A ring around the
@@ -27,7 +34,8 @@ export function PortalEntry() {
   const [stage, setStage] = useState<"ritual" | "entered">("ritual");
   /** True once the count has reached 100 and the wormhole is on screen. */
   const [ready, setReady] = useState(false);
-  const [count, setCount] = useState(0);
+  /** The loading number, and how far the ones strip has rolled to show it. */
+  const [load, setLoad] = useState({ value: 0, ones: 0 });
   const [phase, setPhase] = useState<Phase>("idle");
 
   const coverRef = useRef<HTMLDivElement>(null);
@@ -120,7 +128,7 @@ export function PortalEntry() {
         scene.teardown();
         sceneRef.current = null;
         setReady(false);
-        setCount(0);
+        setLoad({ value: 0, ones: 0 });
         setPhase("idle");
       };
 
@@ -143,30 +151,34 @@ export function PortalEntry() {
     };
   }, [stage]);
 
-  // The count. It follows the real loading, but never runs faster than an even
-  // climb over loading.minMs, so it reads as a count and not a jump.
+  // The loading number. It follows the real loading, but never runs faster than
+  // an even climb over loading.minMs. It moves on in steps, and each digit rolls
+  // to its new place, so it reads as a counter turning and not a blur.
   useEffect(() => {
     if (stage !== "ritual" || ready) return;
+    const { minMs, stepMs, rollMs, holdMs } = portalConfig.loading;
     const started = performance.now();
-    let shown = 0;
-    let frame = 0;
-    let done = 0;
-    const tick = (now: number) => {
-      const pace = ((now - started) / portalConfig.loading.minMs) * 100;
-      shown = Math.max(shown, Math.min(progress.current, pace, 100));
-      setCount(Math.floor(shown));
-      if (shown >= 100) {
-        // Hold on 100 for a breath, then let the wormhole in.
-        done = window.setTimeout(() => setReady(true), 260);
+    let value = 0;
+    let ones = 0;
+    let timer = 0;
+    const step = () => {
+      const pace = ((performance.now() - started) / minMs) * 100;
+      const next = Math.floor(Math.max(value, Math.min(progress.current, pace, 100)));
+      if (next !== value) {
+        // The ones digit only rolls forward. Landing on the same digit is a full turn.
+        ones += (((next % 10) - (value % 10) + 10) % 10) || 10;
+        value = next;
+        setLoad({ value, ones });
+      }
+      if (value >= 100) {
+        // Let the digits land, hold on 100 for a breath, then let the wormhole in.
+        timer = window.setTimeout(() => setReady(true), rollMs + holdMs);
         return;
       }
-      frame = requestAnimationFrame(tick);
+      timer = window.setTimeout(step, stepMs * (0.7 + 0.6 * Math.random()));
     };
-    frame = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.clearTimeout(done);
-    };
+    timer = window.setTimeout(step, 240);
+    return () => window.clearTimeout(timer);
   }, [stage, ready]);
 
   /** Keep the hold ring under the pointer. */
@@ -174,9 +186,9 @@ export function PortalEntry() {
     if (ringRef.current) ringRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
   };
 
-  /** A press landed outside the hole. Show where to hold: a ring closes onto the middle of it, twice. */
+  /** A press landed outside the hole. Show where to hold: a ring closes onto the mark in the middle of it, twice. */
   const showWhere = () => {
-    const mark = whereRef.current?.firstElementChild;
+    const mark = whereRef.current?.querySelector(".portal-hold-call");
     if (!mark) return;
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     mark.animate(
@@ -258,6 +270,7 @@ export function PortalEntry() {
         <div
           ref={coverRef}
           className="portal-cover fixed inset-0 z-[60] touch-none select-none"
+          data-ready={ready || undefined}
           onWheel={onWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -272,21 +285,60 @@ export function PortalEntry() {
             data-ready={ready || undefined}
           />
 
-          {/* The loading count. Nothing else is on screen until it reaches 100. */}
+          {/* The loading number: the only thing on the black screen until it reaches 100,
+              then it rolls away. Set in the system face, which is SF Pro on Apple devices. */}
           <p
-            className="portal-count pointer-events-none absolute inset-0 grid place-items-center font-mono text-[14px] tracking-[0.14em] text-[#efe9dd]"
+            className="portal-load pointer-events-none"
             role="status"
-            aria-label={ready ? undefined : `Loading, ${count} percent`}
-            data-hidden={ready || undefined}
+            aria-label={ready ? undefined : `Loading, ${load.value} percent`}
+            data-value={load.value}
+            data-leaving={ready || undefined}
+            style={
+              {
+                "--roll": `${portalConfig.loading.rollMs}ms`,
+                "--leave": `${portalConfig.loading.leaveMs}ms`,
+              } as CSSProperties
+            }
           >
-            <span aria-hidden="true">{count}</span>
+            {[
+              { cells: HUNDREDS, at: load.value >= 100 ? 1 : 0, empty: load.value < 100 },
+              { cells: TENS, at: Math.floor(load.value / 10), empty: load.value < 10 },
+              { cells: ONES, at: load.ones, empty: false },
+            ].map((column, index) => (
+              <span key={index} className="portal-load-col" data-empty={column.empty || undefined} aria-hidden="true">
+                <span className="portal-load-out">
+                  <span className="portal-load-strip" style={{ "--at": column.at } as CSSProperties}>
+                    {column.cells.map((cell, i) => (
+                      <span key={i}>{cell}</span>
+                    ))}
+                  </span>
+                </span>
+              </span>
+            ))}
           </p>
 
-          {/* Where to hold. It sits in the middle of the hole and only shows when a press lands outside it. */}
-          <div ref={whereRef} className="portal-where pointer-events-none absolute left-0 top-0" aria-hidden="true">
-            <svg viewBox="0 0 48 48" fill="none">
-              <circle cx="24" cy="24" r="21" />
-            </svg>
+          {/* Where to hold. The scene keeps this in the middle of the hole. Rings move in toward
+              its centre, and two words sit beside it. [PLACEHOLDER] wording, for Vedant to confirm.
+              It goes while the screen is held, and a press outside the hole calls attention to it. */}
+          <div
+            ref={whereRef}
+            className="portal-hold pointer-events-none absolute left-0 top-0"
+            data-shown={(ready && phase === "idle") || undefined}
+            aria-hidden="true"
+          >
+            <div className="portal-hold-in">
+              <span className="portal-hold-rim" />
+              <span className="portal-hold-wave" />
+              <span className="portal-hold-wave" />
+              <span className="portal-hold-core" />
+              <svg className="portal-hold-call" viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="23" />
+              </svg>
+              <p className="portal-hold-words">
+                <span>Tap</span>
+                <span>Hold</span>
+              </p>
+            </div>
           </div>
 
           {/* The ring around the pointer while the screen is held. It fills as the hold goes on:
